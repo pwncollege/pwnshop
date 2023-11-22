@@ -5,6 +5,12 @@ We use pwnshop to generate most of pwn.college's challenges!
 
 This repository has the core of pwnshop, along with one example challenge.
 
+## Installing
+
+```
+pip install pwnshop
+```
+
 ## Challenge Generation
 
 Let's generate some things!
