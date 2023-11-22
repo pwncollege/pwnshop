@@ -3,11 +3,11 @@ import os
 from setuptools import setup
 from setuptools import find_packages
 
-packages = find_packages() + [ "pwnshop.challenges.base_templates" ]
+packages = find_packages() + [ "pwnshop.challenges.base_templates", "pwnshop.challenges.base" ]
 
 setup(
     name="pwnshop",
-    version="0.0.1",
+    version="0.0.2",
     python_requires=">=3.8",
     packages=packages,
     install_requires=["jinja2==3.0.3", "nbconvert==6.4.4", "asteval", "pyastyle", "pwntools", "ezmp", "pyyaml", "ruamel.yaml", "docker"],
