@@ -1,6 +1,6 @@
 import inspect
 
-from .challenges import Challenge, KernelChallenge, ChallengeGroup
+from .challenges import Challenge, KernelChallenge, ChallengeGroup, retry
 
 ALL_CHALLENGES = { }
 ALL_MODULES = { }
