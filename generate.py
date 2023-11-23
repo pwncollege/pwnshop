@@ -15,7 +15,7 @@ def dothing(args):
     seed = "_".join([module, level, str(version), str(instance)])
 
     walkthrough = version == 0
-    Challenge = pwnshop.all_challenges[f"{module}Level{level}"]
+    Challenge = pwnshop.ALL_CHALLENGES[f"{module}Level{level}"]
     challenge = Challenge(seed=seed, walkthrough=walkthrough)
 
     print(f"Generating: {seed=} {walkthrough=}", flush=True)
@@ -97,7 +97,7 @@ def main():
         levels = args.levels.split(",")
     else:
         prefix = f"{args.module}Level"
-        levels = [level[len(prefix):] for level in pwnshop.all_challenges if level.startswith(prefix)]
+        levels = [level[len(prefix):] for level in pwnshop.ALL_CHALLENGES if level.startswith(prefix)]
 
     if args.verbose:
         pwn.context.log_level = "DEBUG"

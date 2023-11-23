@@ -22,7 +22,7 @@ from . import autoimport
 pwn.context.arch = "x86_64"
 pwn.context.encoding = "latin"
 
-all_challenges = {}
+ALL_CHALLENGES = {}
 
 
 def hex_str_repr(s):
@@ -75,7 +75,7 @@ class Challenge:
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
-        all_challenges[cls.__name__] = cls
+        ALL_CHALLENGES[cls.__name__] = cls
 
     @property
     def TEMPLATE_PATH(self):

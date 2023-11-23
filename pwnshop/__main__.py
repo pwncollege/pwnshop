@@ -8,8 +8,8 @@ import os
 
 def challenge_class(challenge=None, module=None, level=None):
     if challenge:
-        assert challenge in pwnshop.all_challenges, "Unknown challenge specified!"
-        return pwnshop.all_challenges[challenge]
+        assert challenge in pwnshop.ALL_CHALLENGES, "Unknown challenge specified!"
+        return pwnshop.ALL_CHALLENGES[challenge]
     elif level and module:
         assert module in pwnshop.module_levels, "Uknown module specified!"
         assert 0 < level <= len(pwnshop.module_levels[module]), "Invalid level specified."

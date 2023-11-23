@@ -10,7 +10,7 @@ import pwnshop
 
 test_challenges = [
     challenge
-    for challenge_name, challenge in pwnshop.all_challenges.items()
+    for challenge_name, challenge in pwnshop.ALL_CHALLENGES.items()
     if "Level" in challenge_name
     and re.fullmatch(os.getenv("TEST_CHALLENGE", ".*"), challenge_name)
 ]
