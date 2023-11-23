@@ -3,7 +3,7 @@ import os
 from setuptools import setup
 from setuptools import find_packages
 
-packages = find_packages() + [ "pwnshop.challenges.base_templates", "pwnshop.challenges.base" ]
+packages = find_packages(where="./pwnshop") + [ "pwnshop.challenges.base_templates", "pwnshop.challenges.base" ]
 
 setup(
     name="pwnshop",
