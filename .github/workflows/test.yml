@@ -1,0 +1,15 @@
+name: test pwnshop
+on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 23
+    steps:
+      - uses: actions/checkout@v3
+      - name: install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-pip build-essential
+          python -m pip install --upgrade pip
+          pip install pytest pytest-dependency
+          pip install ./pwnshop
