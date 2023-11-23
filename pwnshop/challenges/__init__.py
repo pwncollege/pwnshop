@@ -14,7 +14,7 @@ import traceback
 import docker
 import pyastyle
 import pwn
-from jinja2 import Environment, PackageLoader, contextfilter
+from jinja2 import Environment, PackageLoader, ChoiceLoader, contextfilter
 
 from . import autoimport
 
@@ -91,7 +91,11 @@ class Challenge:
         return "".join(self.random.choice(vocabulary) for _ in range(length))
 
     def generate_source(self):
-        env = Environment(loader=PackageLoader(__name__, ""), trim_blocks=True)
+        env = Environment(loader=ChoiceLoader([
+            PackageLoader(__name__, ""),
+            PackageLoader(inspect.getmodule(self).__name__, ""),
+            PackageLoader(inspect.getmodule(self).__name__, ".."),
+        ]), trim_blocks=True)
         env.filters["layout_text"] = layout_text
         env.filters["layout_text_walkthrough"] = layout_text_walkthrough
         template = env.get_template(self.TEMPLATE_PATH)
