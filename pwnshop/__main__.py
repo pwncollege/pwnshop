@@ -11,9 +11,9 @@ def challenge_class(challenge=None, module=None, level=None):
         assert challenge in pwnshop.ALL_CHALLENGES, "Unknown challenge specified!"
         return pwnshop.ALL_CHALLENGES[challenge]
     elif level and module:
-        assert module in pwnshop.module_levels, "Uknown module specified!"
-        assert 0 < level <= len(pwnshop.module_levels[module]), "Invalid level specified."
-        return pwnshop.module_levels[module][level-1]
+        assert module in pwnshop.MODULE_LEVELS, "Uknown module specified!"
+        assert 0 < level <= len(pwnshop.MODULE_LEVELS[module]), "Invalid level specified."
+        return pwnshop.MODULE_LEVELS[module][level-1]
     else:
         raise AssertionError("Improper challenge specification (need challenge or module&level).")
 
@@ -125,11 +125,11 @@ def main():
             f.write(args.flag.encode())
 
     if (args.yml or args.dojo_insert) and args.module and not args.level:
-        assert args.module in pwnshop.module_levels, "Uknown module specified!"
+        assert args.module in pwnshop.MODULE_LEVELS, "Uknown module specified!"
         module = getattr(pwnshop.challenges, args.module)
         num_test = module.NUM_TESTING
         metadata = [ ]
-        for i,C in enumerate(pwnshop.module_levels[args.module], start=1):
+        for i,C in enumerate(pwnshop.MODULE_LEVELS[args.module], start=1):
             if hasattr(module, "CHOOSE_LEVELS") and i not in module.CHOOSE_LEVELS:
                 continue
 

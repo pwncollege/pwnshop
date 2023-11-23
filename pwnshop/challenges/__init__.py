@@ -463,10 +463,10 @@ def retry(max_attempts):
     return wrapper
 
 
-module_levels = { }
+MODULE_LEVELS = { }
 for pkg_name, package in autoimport.auto_import_packages(
     base_module="pwnshop.challenges",
     base_path=os.path.dirname(os.path.abspath(__file__)),
     ignore_dirs=["__pycache__"],
 ):
-    module_levels[pkg_name] = package.LEVELS
+    MODULE_LEVELS[pkg_name] = package.LEVELS
