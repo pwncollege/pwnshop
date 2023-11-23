@@ -8,7 +8,7 @@ jobs:
       - uses: actions/checkout@v3
       - name: info
         run: |
-          ls -alR
+          ls -lR
           git show
       - name: install
         run: |
