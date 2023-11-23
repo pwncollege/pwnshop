@@ -14,4 +14,9 @@ setup(
     package_data={ dd.replace("/","."):cc for dd,cc in ( (d,[f for f in c if f.endswith(".c")]) for d,_,c in os.walk("pwnshop") ) if cc },
     description="A framework for generating CTF challenges for learning",
     url="https://github.com/pwncollege/pwnshop",
+    entry_points={
+        "console_scripts": [
+            "pwnshop = pwnshop.__main__:main"
+        ],
+    },
 )
