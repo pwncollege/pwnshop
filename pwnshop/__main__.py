@@ -23,6 +23,14 @@ def make_challenge(challenge=None, module=None, level=None, **kwargs):
 def main():
     parser = argparse.ArgumentParser(description="pwnshop challenge emitter")
     parser.add_argument(
+        "-I",
+        "--import",
+        required=False,
+        nargs="*",
+        action="extend",
+        help="a path to import additional challenges from (either /path/to/module.py or /path/to/package/)",
+    )
+    parser.add_argument(
         "-c",
         "--challenge",
         required=False,
@@ -116,6 +124,18 @@ def main():
     )
 
     args = parser.parse_args()
+
+    if getattr(args, "import", None):
+        imports = getattr(args, "import")
+        for i in imports:
+            sys.path.append(os.path.realpath(os.path.dirname(i)))
+            print(sys.path)
+            try:
+                module_name = os.path.basename(i).split(".py")[0]
+                print(module_name)
+                __import__(module_name)
+            finally:
+                sys.path.pop()
 
     if args.debug:
         pwn.context.log_level = "DEBUG"
