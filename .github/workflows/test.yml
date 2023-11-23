@@ -17,3 +17,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install pytest pytest-dependency
           pip install .
+      - name: test
+        run: |
+          pwnshop -c BabyShellBasicShellcode --src
+          pwnshop -c BabyShellBasicShellcode --bin > babyshell_level1
+          file babyshell_level1 | grep ELF
+          pwnshop -c BabyShellBasicShellcode --verify
