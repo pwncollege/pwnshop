@@ -129,10 +129,8 @@ def main():
         imports = getattr(args, "import")
         for i in imports:
             sys.path.append(os.path.realpath(os.path.dirname(i)))
-            print(sys.path)
             try:
                 module_name = os.path.basename(i).split(".py")[0]
-                print(module_name)
                 __import__(module_name)
             finally:
                 sys.path.pop()
