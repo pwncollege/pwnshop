@@ -20,7 +20,8 @@ jobs:
       - name: test
         run: |
           echo "pwncollege{TESTING}" | sudo tee /flag
-          pwnshop -c BabyShellBasicShellcode --src
-          pwnshop -c BabyShellBasicShellcode --bin > babyshell_level1
-          file babyshell_level1 | grep ELF
-          pwnshop -c BabyShellBasicShellcode --verify
+          cd ..
+          pwnshop -I pwnshop/example_module -c ShellExample --src
+          pwnshop -I pwnshop/example_module -c ShellExample --bin > /tmp/shell_example
+          file /tmp/shell_example | grep ELF
+          pwnshop -I pwnshop/example_module -c ShellExample --verify
