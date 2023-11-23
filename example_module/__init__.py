@@ -1,12 +1,9 @@
+import pwnshop
+import pwn
 import os
 
-import pwn
-
-from .. import Challenge
-
-
-class BabyShellBase(Challenge):
-    TEMPLATE_PATH = "babyshell/babyshell.c"
+class ShellBase(pwnshop.Challenge):
+    TEMPLATE_PATH = "example_shell.c"
     EXEC_STACK = True
     CANARY = True
     LINK_LIBRARIES = ["capstone"]
@@ -24,7 +21,7 @@ class BabyShellBase(Challenge):
         super().__init__(*args, **kwargs)
         self.shellcode_address = self.random.randrange(0x13370000, 0x31337000, 0x1000)
 
-class BabyShellBasicShellcode(BabyShellBase):
+class ShellExample(ShellBase):
     """
     Write and execute shellcode to read the flag!
     """
@@ -43,8 +40,8 @@ class BabyShellBasicShellcode(BabyShellBase):
             )
             process.write(shellcode)
             assert self.flag in process.readall()
-LEVELS = [
-    BabyShellBasicShellcode,
-]
+
+pwnshop.register_challenge(ShellExample)
+
 NUM_TESTING=0
 DOJO_MODULE="shellcode"

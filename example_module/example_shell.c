@@ -22,9 +22,9 @@
   for (char **a = envp; *a != NULL; a++) memset(*a, 0, strlen(*a));
 
   {% if challenge.stack_shellcode %}
-    {% include "babyshell/stack_shellcode.c" %}
+    {% include "stack_shellcode.c" %}
   {% else %}
-    {% include "babyshell/alloc_shellcode.c" %}
+    {% include "alloc_shellcode.c" %}
   {% endif %}
 
 
