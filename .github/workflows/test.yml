@@ -19,7 +19,7 @@ jobs:
           pip install .
       - name: test
         run: |
-          echo "pwncollege{TESTING}" > /flag
+          echo "pwncollege{TESTING}" | sudo tee /flag
           pwnshop -c BabyShellBasicShellcode --src
           pwnshop -c BabyShellBasicShellcode --bin > babyshell_level1
           file babyshell_level1 | grep ELF
