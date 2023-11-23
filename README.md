@@ -17,16 +17,16 @@ Let's generate some things!
 
 
 ```sh
-# `babyshell_level1` in testing mode
-python -m pwnshop --challenge BabyShellBasicShellcode --src
+# example challenge in testing mode
+pwnshop -I /path/to/example_module --challenge ShellExample --src
 
-# `babyshell_level1` in teaching mode
-python -m pwnshop --challenge BabyShellBasicShellcode --walkthrough --src
+# example challenge in teaching mode
+pwnshop -I /path/to/example_module --challenge ShellExample --walkthrough --src
 
-# make sure `babyshell_level1` compiles and the reference solution works
-python -m pwnshop --challenge BabyShellBasicShellcode --walkthrough --verify
+# make sure the example challenge compiles and the reference solution works
+pwnshop -I /path/to/example_module --challenge ShellExample --walkthrough --verify
 
-# generate the `babyshell_level1` binary
-python -m pwnshop --challenge BabyShellBasicShellcode --walkthrough --bin > babyshell_level1
+# generate the example challenge binary
+pwnshop -I /path/to/example_module --challenge ShellExample --walkthrough --bin > example_shell
 
 ```
