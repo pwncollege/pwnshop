@@ -22,9 +22,6 @@ from . import autoimport
 pwn.context.arch = "x86_64"
 pwn.context.encoding = "latin"
 
-ALL_CHALLENGES = {}
-
-
 def hex_str_repr(s):
     hex_s = s.encode("latin").hex()
     return "".join("\\x" + hex_s[i : i + 2] for i in range(0, len(hex_s), 2))
@@ -72,10 +69,6 @@ class Challenge:
         self.seed = seed
         self.random = random.Random(seed)
         self.walkthrough = kwargs.get("walkthrough")
-
-    def __init_subclass__(cls, **kwargs):
-        super().__init_subclass__(**kwargs)
-        ALL_CHALLENGES[cls.__name__] = cls
 
     @property
     def TEMPLATE_PATH(self):
@@ -461,12 +454,3 @@ def retry(max_attempts):
         return wrapped
 
     return wrapper
-
-
-MODULE_LEVELS = { }
-for pkg_name, package in autoimport.auto_import_packages(
-    base_module="pwnshop.challenges",
-    base_path=os.path.dirname(os.path.abspath(__file__)),
-    ignore_dirs=["__pycache__"],
-):
-    MODULE_LEVELS[pkg_name] = package.LEVELS
