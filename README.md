@@ -30,3 +30,11 @@ pwnshop -I /path/to/example_module --challenge ShellExample --walkthrough --veri
 pwnshop -I /path/to/example_module --challenge ShellExample --walkthrough --bin > example_shell
 
 ```
+
+## Writing challenges
+
+Check out `example_module` for an example challenge.
+
+1. Write some templates.
+2. Write some Python.
+3. `pwnshop.register_challenge`
