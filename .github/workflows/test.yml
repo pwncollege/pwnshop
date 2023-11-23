@@ -6,6 +6,11 @@ jobs:
     timeout-minutes: 23
     steps:
       - uses: actions/checkout@v3
+      - name: info
+        run: |
+          ls -al
+          ls -lR pwnshop
+          git -C pwnship show
       - name: install dependencies
         run: |
           sudo apt-get update
