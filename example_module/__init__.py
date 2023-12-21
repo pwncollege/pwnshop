@@ -30,18 +30,15 @@ class ShellExample(ShellBase):
     shellcode_size = 0x1000
     allocation_size = 0x1000
 
-    def verify(self, binary=None):
+    def verify(self, binary=None, **kwargs):
         """
         Read 0x1000 bytes onto the stack (address varies every time that it is run)
         """
-        with super().verify(binary) as process:
+        with super().verify(binary, **kwargs) as process:
             shellcode = pwn.asm(
-                pwn.shellcraft.open("/flag") + pwn.shellcraft.sendfile(1, 3, 0, 1024)
+                pwn.shellcraft.open("/flag") + pwn.shellcraft.sendfile(1, 3, 0, 1024) + pwn.shellcraft.exit(0)
             )
             process.write(shellcode)
             assert self.flag in process.readall()
 
 pwnshop.register_challenge(ShellExample)
-
-NUM_TESTING=0
-DOJO_MODULE="shellcode"
