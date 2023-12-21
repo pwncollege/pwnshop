@@ -1,5 +1,6 @@
 import argparse
 import pwnshop
+import inspect
 import random
 import glob
 import sys
@@ -144,7 +145,10 @@ def main():
             with open("/flag", "wb") as f:
                 f.write(args.flag.encode())
 
-        challenge.verify(strace=args.strace)
+        if "strace" in inspect.getargspec(challenge.verify)[0]:
+            challenge.verify(strace=args.strace)
+        else:
+            challenge.verify()
 
 if __name__ == "__main__":
     main()
