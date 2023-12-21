@@ -8,7 +8,7 @@ import sys
 import pwn #pylint:disable=import-error
 import os
 
-def challenge_class(challenge=None):
+def challenge_class(challenge):
     if ":" not in challenge:
         assert challenge in pwnshop.ALL_CHALLENGES, "Unknown challenge specified!"
         return pwnshop.ALL_CHALLENGES[challenge]
@@ -53,20 +53,27 @@ def handle_build(args, challenge):
                 f.write(lib_bytes)
             os.chmod(lib_path, 0o755)
 
-@with_challenge
-def handle_verify(args, challenge):
-    if args.debug:
-        print("WTF")
+def verify_challenge(challenge, debug=False, flag=None, strace=False):
+    if debug:
         pwn.context.log_level = "DEBUG"
 
-    if args.flag:
+    if flag:
         with open("/flag", "wb") as f:
-            f.write(args.flag.encode())
+            f.write(flag.encode())
 
     if "strace" in inspect.getfullargspec(challenge.verify)[0]:
-        challenge.verify(strace=args.strace)
+        challenge.verify(strace=strace)
     else:
         challenge.verify()
+
+@with_challenge
+def handle_verify(args, challenge):
+    return verify_challenge(challenge, debug=args.debug, flag=args.flag, strace=args.strace)
+
+def handle_verify_module(args):
+    for n,c in enumerate(c(seed=args.seed, walthrough=args.walkthrough) for c in pwnshop.MODULE_LEVELS[args.module]):
+        print(f"Verifying {args.module} level {n+1}.")
+        verify_challenge(c, debug=args.debug, flag=args.flag, strace=args.strace)
 
 def main():
     parser = argparse.ArgumentParser(description="pwnshop challenge emitter", formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -80,13 +87,7 @@ def main():
     command_render = commands.add_parser("render", help="render the source code of a challenge")
     command_build = commands.add_parser("build", help="build the binary code of a challenge")
     command_verify = commands.add_parser("verify", help="verify the functionality of a challenge")
-
-    command_verify.add_argument(
-        "-t",
-        "--strace",
-        action="store_true",
-        help="print out strace information during verification",
-    )
+    command_verify_module = commands.add_parser("verify-module", help="verify the functionality of all challenges in a module")
 
     command_render.add_argument(
         "-l",
@@ -95,16 +96,25 @@ def main():
         help="render line numbers",
     )
 
-    command_verify.add_argument(
-        "-f",
-        "--flag",
-        help="change the flag to be verified against",
-    )
-
     command_build.add_argument(
         "--lpath",
         help="Location to store needed library files",
     )
+
+    for c in [ command_verify, command_verify_module ]:
+        c.add_argument(
+            "-t",
+            "--strace",
+            action="store_true",
+            help="print out strace information during verification",
+        )
+
+        c.add_argument(
+            "-f",
+            "--flag",
+            help="change the flag to be verified against",
+        )
+
 
     # where to write
     for c in [ command_render, command_build ]:
@@ -144,7 +154,7 @@ def main():
     for subparser in [ command_render, command_build, command_verify ]:
         subparser.add_argument("challenge", help="the challenge, as ChallengeClassName or ModuleName:level_number")
 
-    #command_verify_module.add_argument(module)
+    command_verify_module.add_argument("module", help="the module to verify")
 
     parser.epilog = f"""Commands usage:\n\t{command_render.format_usage()}\t{command_build.format_usage()}\t{command_verify.format_usage()}"""
 
@@ -161,7 +171,7 @@ def main():
             finally:
                 sys.path.pop()
 
-    globals()["handle_" + args.ACTION](args)
+    globals()["handle_" + args.ACTION.replace('-', '_')](args)
 
 if __name__ == "__main__":
     main()
