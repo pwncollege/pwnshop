@@ -1,13 +1,14 @@
+import functools
 import argparse
 import pwnshop
 import inspect
 import random
 import glob
 import sys
-import pwn
+import pwn #pylint:disable=import-error
 import os
 
-def challenge_class(challenge=None, module=None, level=None):
+def challenge_class(challenge=None):
     if ":" not in challenge:
         assert challenge in pwnshop.ALL_CHALLENGES, "Unknown challenge specified!"
         return pwnshop.ALL_CHALLENGES[challenge]
@@ -19,8 +20,53 @@ def challenge_class(challenge=None, module=None, level=None):
         assert 0 < level <= len(pwnshop.MODULE_LEVELS[module]), "Invalid level specified."
         return pwnshop.MODULE_LEVELS[module][level-1]
 
-def make_challenge(challenge=None, module=None, level=None, **kwargs):
-    return challenge_class(challenge=challenge, module=module, level=level)(**kwargs)
+def with_challenge(f):
+    @functools.wraps(f)
+    def f_with_challenge(args):
+        challenge = challenge_class(challenge=args.challenge)(seed=args.seed, walkthrough=args.walkthrough)
+        return f(args, challenge)
+    return f_with_challenge
+
+@with_challenge
+def handle_render(args, challenge):
+    src = challenge.generate_source()
+    if not args.lineno:
+        args.out.write(src+"\n")
+    else:
+        for i, line in enumerate(src.splitlines()):
+            args.out.write(f"{i + 1}\t{line}\n")
+    if os.path.isfile(args.out.name):
+        os.chmod(args.out.name, 0o644)
+
+@with_challenge
+def handle_build(args, challenge):
+    binary, libs = challenge.build_binary()
+    args.out.buffer.write(binary)
+    if os.path.isfile(args.out.name):
+        os.chmod(args.out.name, 0o755)
+
+    if args.lpath and libs:
+        os.makedirs(args.lpath, exist_ok=True)
+        for lib_name, lib_bytes in libs:
+            lib_path = args.lpath + f'/{lib_name}'
+            with open(lib_path, 'wb+') as f:
+                f.write(lib_bytes)
+            os.chmod(lib_path, 0o755)
+
+@with_challenge
+def handle_verify(args, challenge):
+    if args.debug:
+        print("WTF")
+        pwn.context.log_level = "DEBUG"
+
+    if args.flag:
+        with open("/flag", "wb") as f:
+            f.write(args.flag.encode())
+
+    if "strace" in inspect.getfullargspec(challenge.verify)[0]:
+        challenge.verify(strace=args.strace)
+    else:
+        challenge.verify()
 
 def main():
     parser = argparse.ArgumentParser(description="pwnshop challenge emitter", formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -94,7 +140,11 @@ def main():
             help="enable challenge walkthrough mode",
         )
 
+    # common to all single-challenge commands
+    for subparser in [ command_render, command_build, command_verify ]:
         subparser.add_argument("challenge", help="the challenge, as ChallengeClassName or ModuleName:level_number")
+
+    #command_verify_module.add_argument(module)
 
     parser.epilog = f"""Commands usage:\n\t{command_render.format_usage()}\t{command_build.format_usage()}\t{command_verify.format_usage()}"""
 
@@ -111,46 +161,7 @@ def main():
             finally:
                 sys.path.pop()
 
-    if args.ACTION == "render":
-        challenge = make_challenge(challenge=args.challenge, seed=args.seed, walkthrough=args.walkthrough)
-        src = challenge.generate_source()
-        if not args.lineno:
-            args.out.write(src+"\n")
-        else:
-            for i, line in enumerate(src.splitlines()):
-                args.out.write(f"{i + 1}\t{line}\n")
-        if os.path.isfile(args.out.name):
-            os.chmod(args.out.name, 0o644)
-
-    if args.ACTION == "build":
-        challenge = make_challenge(challenge=args.challenge, seed=args.seed, walkthrough=args.walkthrough)
-        binary, libs = challenge.build_binary()
-        args.out.buffer.write(binary)
-        if os.path.isfile(args.out.name):
-            os.chmod(args.out.name, 0o755)
-
-        if args.lpath and libs:
-            os.makedirs(args.lpath, exist_ok=True)
-            for lib_name, lib_bytes in libs:
-                lib_path = args.lpath + f'/{lib_name}'
-                with open(lib_path, 'wb+') as f:
-                    f.write(lib_bytes)
-                os.chmod(lib_path, 0o755)
-
-
-    if args.ACTION == "verify":
-        challenge = make_challenge(challenge=args.challenge, seed=args.seed, walkthrough=args.walkthrough)
-        if args.debug:
-            pwn.context.log_level = "DEBUG"
-
-        if args.flag:
-            with open("/flag", "wb") as f:
-                f.write(args.flag.encode())
-
-        if "strace" in inspect.getfullargspec(challenge.verify)[0]:
-            challenge.verify(strace=args.strace)
-        else:
-            challenge.verify()
+    globals()["handle_" + args.ACTION](args)
 
 if __name__ == "__main__":
     main()
