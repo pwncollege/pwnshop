@@ -21,7 +21,7 @@ jobs:
         run: |
           echo "pwncollege{TESTING}" | sudo tee /flag
           cd ..
-          pwnshop -I pwnshop/example_module -c ShellExample --src
-          pwnshop -I pwnshop/example_module -c ShellExample --bin > /tmp/shell_example
+          pwnshop -I pwnshop/example_module render ShellExample
+          pwnshop -I pwnshop/example_module build ShellExample > /tmp/shell_example
           file /tmp/shell_example | grep ELF
-          pwnshop -I pwnshop/example_module -c ShellExample --verify
+          pwnshop -I pwnshop/example_module verify ShellExample

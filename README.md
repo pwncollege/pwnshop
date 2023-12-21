@@ -17,18 +17,17 @@ Let's generate some things!
 
 
 ```sh
-# example challenge in testing mode
-pwnshop -I /path/to/example_module --challenge ShellExample --src
+# render example challenge source code in testing mode
+pwnshop -I /path/to/example_module render ShellExample
 
-# example challenge in teaching mode
-pwnshop -I /path/to/example_module --challenge ShellExample --walkthrough --src
+# render example challenge source code in teaching mode
+pwnshop -I /path/to/example_module render ShellExample --walkthrough
 
-# make sure the example challenge compiles and the reference solution works
-pwnshop -I /path/to/example_module --challenge ShellExample --walkthrough --verify
+# test the example challenge binary and solution
+pwnshop -I /path/to/example_module verify ShellExample --walkthrough
 
-# generate the example challenge binary
-pwnshop -I /path/to/example_module --challenge ShellExample --walkthrough --bin > example_shell
-
+# build the example challenge binary
+pwnshop -I /path/to/example_module build ShellExample --walkthrough -O example_shell
 ```
 
 ## Writing challenges
