@@ -25,3 +25,4 @@ jobs:
           pwnshop -I pwnshop/example_module build ShellExample > /tmp/shell_example
           file /tmp/shell_example | grep ELF
           pwnshop -I pwnshop/example_module verify ShellExample
+          pwnshop -I pwnshop/example_module verify-module example_module
