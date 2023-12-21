@@ -99,6 +99,7 @@ def main():
     parser.epilog = f"""Commands usage:\n\t{command_render.format_usage()}\t{command_build.format_usage()}\t{command_verify.format_usage()}"""
 
     args = parser.parse_args()
+    pwn.context.log_level = "ERROR"
 
     if getattr(args, "import", None):
         imports = glob.glob(getattr(args, "import"))
