@@ -111,9 +111,8 @@ def main():
             finally:
                 sys.path.pop()
 
-    challenge = make_challenge(challenge=args.challenge, seed=args.seed, walkthrough=args.walkthrough)
-
     if args.ACTION == "render":
+        challenge = make_challenge(challenge=args.challenge, seed=args.seed, walkthrough=args.walkthrough)
         src = challenge.generate_source()
         if not args.lineno:
             args.out.write(src+"\n")
@@ -124,6 +123,7 @@ def main():
             os.chmod(args.out.name, 0o644)
 
     if args.ACTION == "build":
+        challenge = make_challenge(challenge=args.challenge, seed=args.seed, walkthrough=args.walkthrough)
         binary, libs = challenge.build_binary()
         args.out.buffer.write(binary)
         if os.path.isfile(args.out.name):
@@ -139,6 +139,7 @@ def main():
 
 
     if args.ACTION == "verify":
+        challenge = make_challenge(challenge=args.challenge, seed=args.seed, walkthrough=args.walkthrough)
         if args.debug:
             pwn.context.log_level = "DEBUG"
 
@@ -146,7 +147,7 @@ def main():
             with open("/flag", "wb") as f:
                 f.write(args.flag.encode())
 
-        if "strace" in inspect.getargspec(challenge.verify)[0]:
+        if "strace" in inspect.getfullargspec(challenge.verify)[0]:
             challenge.verify(strace=args.strace)
         else:
             challenge.verify()
