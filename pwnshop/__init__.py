@@ -1,6 +1,6 @@
 import inspect
 
-from .challenges import Challenge, KernelChallenge, ChallengeGroup, retry
+from .challenges import Challenge, KernelChallenge, WindowsChallenge, ChallengeGroup, retry
 
 ALL_CHALLENGES = { }
 ALL_MODULES = { }

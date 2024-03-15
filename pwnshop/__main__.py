@@ -40,7 +40,7 @@ def handle_render(args, challenge):
 
 @with_challenge
 def handle_build(args, challenge):
-    binary, libs = challenge.build_binary()
+    binary, libs, pdb = challenge.build_binary()
     args.out.buffer.write(binary)
     if os.path.isfile(args.out.name):
         os.chmod(args.out.name, 0o755)
@@ -52,6 +52,9 @@ def handle_build(args, challenge):
             with open(lib_path, 'wb+') as f:
                 f.write(lib_bytes)
             os.chmod(lib_path, 0o755)
+    if pdb:
+        with open(f"{args.out.name.replace('.exe', '.pdb')}", 'wb') as f:
+            f.write(pdb)
 
 def verify_challenge(challenge, debug=False, flag=None, strace=False):
     if debug:
