@@ -329,6 +329,7 @@ class WindowsChallenge(Challenge):
     CFG = True
     DYNAMIC_BASE = True
     ASLR_HIGH_ENTROPY = True
+    MAKE_DLL = False
 
     def build_compiler_cmd(self):
         cmd = [self.COMPILER]
@@ -348,6 +349,9 @@ class WindowsChallenge(Challenge):
             cmd.append("/guard:cf")
         else:
             cmd.append("/guard:cf-")
+
+        if self.MAKE_DLL:
+            cmd.append("/LD")
 
         return cmd
         # Linker options
@@ -374,7 +378,11 @@ class WindowsChallenge(Challenge):
         if self.build_image is None:
             with tempfile.TemporaryDirectory(prefix='pwnshop-') as workdir:
                 src_path = f"{workdir}/{self.__class__.__name__.lower()}.c"
-                bin_path = f"{workdir}/{self.__class__.__name__.lower()}.exe"
+
+                if self.MAKE_DLL:
+                    bin_path = f"{workdir}/{self.__class__.__name__.lower()}.dll"
+                else:
+                    bin_path = f"{workdir}/{self.__class__.__name__.lower()}.exe"
                 pdb_path = f"{workdir}/{self.__class__.__name__.lower()}.pdb"
                 with open(src_path, 'w') as f:
                     f.write(source)
