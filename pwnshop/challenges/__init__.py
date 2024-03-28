@@ -106,10 +106,7 @@ class Challenge:
         result = re.sub("\n{2,}", "\n\n", result)
         return result
 
-    def build_binary(self, source=None):
-        if not source:
-            source = self.generate_source()
-
+    def build_compiler_cmd(self):
         cmd = [self.COMPILER]
 
         if self.RELRO == "full":
@@ -158,6 +155,13 @@ class Challenge:
         for lib in self.LINK_LIBRARIES:
             cmd.append("-l" + lib)
 
+        return cmd
+
+    def build_binary(self, source=None):
+        if not source:
+            source = self.generate_source()
+
+        cmd = self.build_compiler_cmd()
 
         if self.build_image is None:
             with tempfile.TemporaryDirectory(prefix='pwnshop-') as workdir:
@@ -172,7 +176,7 @@ class Challenge:
         else:
             binary, libs = self._containerized_build(cmd, source)
 
-        return binary, libs
+        return binary, libs, None
 
     @contextlib.contextmanager
     def setup_environment(self, binary=None, *, path=None, flag_symlink=None):
@@ -180,7 +184,7 @@ class Challenge:
         libs = None
 
         if not binary:
-            binary, libs = self.build_binary()
+            binary, libs, _ = self.build_binary()
         if not path:
             os.makedirs(work_dir, exist_ok=True)
             path = work_dir + self.__class__.__name__.lower()
@@ -317,6 +321,87 @@ class Challenge:
 
             return binary, libs
 
+class WindowsChallenge(Challenge):
+    COMPILER = "cl"
+    CANARY = None
+    FRAME_POINTER = True
+    PDB = True
+    CFG = True
+    DYNAMIC_BASE = True
+    ASLR_HIGH_ENTROPY = True
+    MAKE_DLL = False
+
+    def build_compiler_cmd(self):
+        cmd = [self.COMPILER]
+
+        if self.CANARY is True:
+            cmd.append("/GS")
+        else:
+            cmd.append("/GS-")
+
+        if self.FRAME_POINTER is False:
+            cmd.append("/0y")
+
+        if self.PDB:
+            cmd.append("/Zi")
+
+        if self.CFG:
+            cmd.append("/guard:cf")
+        else:
+            cmd.append("/guard:cf-")
+
+        if self.MAKE_DLL:
+            cmd.append("/LD")
+
+        return cmd
+        # Linker options
+        cmd.append('/LINK')
+        if self.DYNAMIC_BASE is True:
+            cmd.append('/DYNAMICBASE')
+        else:
+            cmd.append('/DYNAMICBASE:NO')
+
+        if self.ASLR_HIGH_ENTROPY is True:
+            cmd.append('/HIGHENTROPYVA')
+
+        for lib in self.LINK_LIBRARIES:
+            cmd.append(lib)
+
+        return cmd
+
+    def build_binary(self, source=None):
+        if not source:
+            source = self.generate_source()
+
+        cmd = self.build_compiler_cmd()
+
+        if self.build_image is None:
+            with tempfile.TemporaryDirectory(prefix='pwnshop-') as workdir:
+                src_path = f"{workdir}/{self.__class__.__name__.lower()}.c"
+
+                if self.MAKE_DLL:
+                    bin_path = f"{workdir}/{self.__class__.__name__.lower()}.dll"
+                else:
+                    bin_path = f"{workdir}/{self.__class__.__name__.lower()}.exe"
+                pdb_path = f"{workdir}/{self.__class__.__name__.lower()}.pdb"
+                with open(src_path, 'w') as f:
+                    f.write(source)
+
+                cmd.append(src_path)
+                subprocess.check_output(cmd, cwd=workdir)
+                with open(bin_path, 'rb') as f:
+                    binary = f.read()
+
+                if self.PDB:
+                    with open(pdb_path, 'rb') as f:
+                        pdb = f.read()
+                else:
+                    pdb = None
+                return binary, None, pdb
+
+        else:
+            raise NotImplementedError("Containerized Windows build not supported")
+
 class KernelChallenge(Challenge):
     def build_binary(self, source=None):
         with tempfile.TemporaryDirectory() as workdir:
@@ -347,7 +432,7 @@ class KernelChallenge(Challenge):
             with open(f"{workdir}/challenge.ko", "rb") as f:
                 binary = f.read()
 
-            return binary, None
+            return binary, None, None
 
     @contextlib.contextmanager
     def verify(
