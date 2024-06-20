@@ -167,6 +167,7 @@ def main():
     if getattr(args, "import", None):
         imports = glob.glob(getattr(args, "import"))
         for i in imports:
+            i = i.rstrip("/")
             sys.path.append(os.path.realpath(os.path.dirname(i)))
             try:
                 module_name = os.path.basename(i).split(".py")[0]
