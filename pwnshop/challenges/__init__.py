@@ -279,16 +279,16 @@ class Challenge:
             os.makedirs(f"{workdir}/lib", exist_ok=True)
             client = docker.from_env()
             img, tag = self.build_image.split(':')
-            #client.images.pull(img, tag=tag)
+            client.images.pull(img, tag=tag)
 
             #TODO: container life is context manager
-            container = client.containers.run('wtf',
+            container = client.containers.run(img + ':' + tag,
                                     'sleep 300',
                                     auto_remove=True,
                                     detach=True,
                                     volumes = {workdir : {'bind': cont_vpath,
                                                                 'mode': 'rw'}})
-            #code, out = container.exec_run('/bin/bash -c "apt update && apt install -y gcc patchelf && mkdir -p /tmp/pwnshop"')
+            code, out = container.exec_run('/bin/bash -c "apt update && apt install -y gcc patchelf && mkdir -p /tmp/pwnshop"')
             with open(f'{workdir}/source.c', 'w+') as f:
                 f.write(source)
 
