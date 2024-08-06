@@ -75,7 +75,7 @@ def handle_verify(args, challenge):
 
 def handle_verify_module(args):
     for n,c in enumerate(c(seed=args.seed, walkthrough=args.walkthrough) for c in pwnshop.MODULE_LEVELS[args.module]):
-        print(f"Verifying {args.module} level {n+1}.")
+        print(f"Verifying {args.module} level {n+1}: {type(c).__name__}.")
         verify_challenge(c, debug=args.debug, flag=args.flag, strace=args.strace)
 
 def main():
