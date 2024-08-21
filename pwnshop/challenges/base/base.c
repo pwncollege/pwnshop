@@ -161,7 +161,7 @@ int main(int argc, char **argv, char **envp)
 
   {% if challenge.require_vm %}
     gethostname(hostname, 128);
-    if (strstr(hostname, "-level") && !strstr(hostname, "vm_"))
+    if (strstr(hostname, "~") && !strstr(hostname, "vm_"))
     {
        puts("ERROR: in the dojo, this challenge MUST run in virtualization mode.");
        puts("Please run `vm connect` to launch and connect to the Virtual Machine, then run this challenge inside the VM.");
