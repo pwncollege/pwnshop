@@ -44,6 +44,7 @@ class Challenge:
     COMPILER = "gcc"
     PIE = None
     RELRO = "full"
+    MASM_FLAG = "-masm=intel"
     CANARY = None
     FRAME_POINTER = None
     STATIC = False
@@ -143,7 +144,8 @@ class Challenge:
         if self.STRIP:
             cmd.append("-s")
 
-        cmd.append("-masm=intel")
+        if self.MASM_FLAG:
+            cmd.append(MASM_FLAG)
 
         cmd.append("-w")
 
