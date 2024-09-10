@@ -145,7 +145,7 @@ class Challenge:
             cmd.append("-s")
 
         if self.MASM_FLAG:
-            cmd.append(MASM_FLAG)
+            cmd.append(self.MASM_FLAG)
 
         cmd.append("-w")
 
