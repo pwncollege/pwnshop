@@ -38,6 +38,11 @@ def handle_render(args, challenge):
     if os.path.isfile(args.out.name):
         os.chmod(args.out.name, 0o644)
 
+def handle_list(args):
+    for module,challenges in pwnshop.MODULE_LEVELS.items():
+        for n,challenge in enumerate(challenges, start=1):
+            print(f"{module}:{n} --- {challenge.__name__}")
+
 @with_challenge
 def handle_build(args, challenge):
     binary, libs, pdb = challenge.build_binary()
@@ -87,6 +92,7 @@ def main():
         help="a path glob to import additional challenges from (either /path/to/module.py or /path/to/package/ or /some/glob/*, but avoid shell-expansion for the latter!)",
     )
     commands = parser.add_subparsers(help="the action for pwnshop to perform", required=True, dest="ACTION")
+    command_render = commands.add_parser("list", help="list known challenges")
     command_render = commands.add_parser("render", help="render the source code of a challenge")
     command_build = commands.add_parser("build", help="build the binary code of a challenge")
     command_verify = commands.add_parser("verify", help="verify the functionality of a challenge")
