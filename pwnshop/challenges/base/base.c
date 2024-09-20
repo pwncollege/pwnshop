@@ -80,12 +80,12 @@
             printf("  Your effective user id is not 0!\n");
             printf("  You must directly run the suid binary in order to have the correct permissions!\n");
         }
-        return;
+        exit(-1);
     }
     flag_length = read(flag_fd, flag, sizeof(flag));
     if (flag_length <= 0) {
         printf("\n  ERROR: Failed to read the flag -- %s!\n", strerror(errno));
-        return;
+        exit(-1);
     }
     {% set stdout = "fileno(thread_stdout)" if challenge.threaded_server else "1"%}
     write({{ stdout }}, flag, flag_length);
