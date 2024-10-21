@@ -171,7 +171,11 @@ def main():
     pwn.context.log_level = "ERROR"
 
     if getattr(args, "import", None):
-        imports = glob.glob(getattr(args, "import"))
+        import_dir = getattr(args, "import")
+        if not os.path.isdir(import_dir):
+            print(f"Error, {import_dir=} does not exist")
+            return -1
+        imports = glob.glob(import_dir)
         for i in imports:
             i = i.rstrip("/")
             sys.path.append(os.path.realpath(os.path.dirname(i)))
