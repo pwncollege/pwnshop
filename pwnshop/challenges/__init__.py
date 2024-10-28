@@ -70,6 +70,10 @@ class Challenge:
         self.random = random.Random(seed)
         self.walkthrough = kwargs.get("walkthrough")
 
+    def __init_subclass__(cls, register=True):
+        if register:
+            register_challenge(cls)
+
     @property
     def TEMPLATE_PATH(self):
         raise NotImplementedError()
@@ -325,7 +329,7 @@ class Challenge:
 
             return binary, libs
 
-class WindowsChallenge(Challenge):
+class WindowsChallenge(Challenge, register=False):
     COMPILER = "cl"
     CANARY = None
     FRAME_POINTER = True
@@ -406,7 +410,7 @@ class WindowsChallenge(Challenge):
         else:
             raise NotImplementedError("Containerized Windows build not supported")
 
-class KernelChallenge(Challenge):
+class KernelChallenge(Challenge, register=False):
     def build_binary(self, source=None):
         with tempfile.TemporaryDirectory() as workdir:
             with open(f"{workdir}/Makefile", "w") as f:
@@ -485,7 +489,7 @@ class KernelChallenge(Challenge):
         return int(data, 16)
 
 
-class ChallengeGroup(Challenge):
+class ChallengeGroup(Challenge, register=False):
     challenges = NotImplemented
 
     def __init__(self, *args, **kwargs):

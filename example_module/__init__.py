@@ -2,7 +2,7 @@ import pwnshop
 import pwn
 import os
 
-class ShellBase(pwnshop.Challenge):
+class ShellBase(pwnshop.Challenge, register=False): # don't register this as an actual challenge
     TEMPLATE_PATH = "example_shell.c"
     EXEC_STACK = True
     CANARY = True
@@ -40,5 +40,3 @@ class ShellExample(ShellBase):
             )
             process.write(shellcode)
             assert self.flag in process.readall()
-
-pwnshop.register_challenge(ShellExample)
