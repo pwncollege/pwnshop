@@ -19,12 +19,4 @@ jobs:
           pip install .
       - name: test
         run: |
-          echo "pwncollege{TESTING}" | sudo tee /flag
-          cd example_module
-          pwnshop render ShellExample
-          pwnshop build ShellExample > /tmp/shell_example
-          file /tmp/shell_example | grep ELF
-          pwnshop verify ShellExample
-          pwnshop verify-module example_module
-          cd ../../
-          pwnshop -C pwnshop/example_module render ShellExample
+          tests/test.sh
