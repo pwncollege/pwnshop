@@ -8,7 +8,7 @@ def register_challenge(challenge):
 	challenge_name = challenge.__name__
 
 	if challenge_name in ALL_CHALLENGES:
-		print("WARNING: replacing previously-registered challenge %s with new challenge %s", ALL_CHALLENGES[challenge_name], challenge)
+		print("WARNING: replacing previously-registered challenge %s with new challenge %s" % (ALL_CHALLENGES[challenge_name], challenge))
 
 	ALL_CHALLENGES[challenge_name] = challenge
 	MODULE_LEVELS.setdefault(module_name, []).append(challenge)
