@@ -16,6 +16,8 @@ import pyastyle
 import pwn
 from jinja2 import Environment, PackageLoader, ChoiceLoader, contextfilter
 
+from ..register import register_challenge
+
 pwn.context.arch = "x86_64"
 pwn.context.encoding = "latin"
 
