@@ -86,10 +86,11 @@ def handle_verify_module(args):
 def main():
     parser = argparse.ArgumentParser(description="pwnshop challenge emitter", formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument(
-        "-I",
-        "--import",
+        "-C",
+        "--challenge-location",
         required=False,
-        help="a path glob to import additional challenges from (either /path/to/module.py or /path/to/package/ or /some/glob/*, but avoid shell-expansion for the latter!)",
+        help="a path glob to import challenges from (either /path/to/module.py or /path/to/package/ or /some/glob/*, but avoid shell-expansion for the latter!). Defaults to cwd.",
+        default=os.getcwd()
     )
     commands = parser.add_subparsers(help="the action for pwnshop to perform", required=True, dest="ACTION")
     command_render = commands.add_parser("list", help="list known challenges")
@@ -170,20 +171,19 @@ def main():
     args = parser.parse_args()
     pwn.context.log_level = "ERROR"
 
-    if getattr(args, "import", None):
-        import_dir = getattr(args, "import")
-        if not os.path.isdir(import_dir):
-            print(f"Error, {import_dir=} does not exist")
-            return -1
-        imports = glob.glob(import_dir)
-        for i in imports:
-            i = i.rstrip("/")
-            sys.path.append(os.path.realpath(os.path.dirname(i)))
-            try:
-                module_name = os.path.basename(i).split(".py")[0]
-                __import__(module_name)
-            finally:
-                sys.path.pop()
+    import_dir = args.challenge_location
+    if not os.path.isdir(import_dir):
+        print(f"Error, {import_dir=} does not exist")
+        return -1
+    imports = glob.glob(import_dir)
+    for i in imports:
+        i = i.rstrip("/")
+        sys.path.append(os.path.realpath(os.path.dirname(i)))
+        try:
+            module_name = os.path.basename(i).split(".py")[0]
+            __import__(module_name)
+        finally:
+            sys.path.pop()
 
     globals()["handle_" + args.ACTION.replace('-', '_')](args)
 

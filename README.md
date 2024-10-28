@@ -17,17 +17,21 @@ Let's generate some things!
 
 
 ```sh
+# by default, pwnshop looks in the current directory for an __init__.py that defines challenges.
+# you can override by passing a path to the -C argument
+cd path/to/example_module
+
 # render example challenge source code in testing mode
-pwnshop -I /path/to/example_module render ShellExample
+pwnshop render ShellExample
 
 # render example challenge source code in teaching mode
-pwnshop -I /path/to/example_module render ShellExample --walkthrough
+pwnshop render ShellExample --walkthrough
 
 # test the example challenge binary and solution
-pwnshop -I /path/to/example_module verify ShellExample --walkthrough
+pwnshop verify ShellExample --walkthrough
 
 # build the example challenge binary
-pwnshop -I /path/to/example_module build ShellExample --walkthrough -O example_shell
+pwnshop build ShellExample --walkthrough -O example_shell
 ```
 
 ## Writing challenges
