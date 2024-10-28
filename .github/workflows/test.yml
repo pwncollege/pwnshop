@@ -20,9 +20,11 @@ jobs:
       - name: test
         run: |
           echo "pwncollege{TESTING}" | sudo tee /flag
-          cd ..
-          pwnshop -I pwnshop/example_module render ShellExample
-          pwnshop -I pwnshop/example_module build ShellExample > /tmp/shell_example
+          cd example_module
+          pwnshop render ShellExample
+          pwnshop build ShellExample > /tmp/shell_example
           file /tmp/shell_example | grep ELF
-          pwnshop -I pwnshop/example_module verify ShellExample
-          pwnshop -I pwnshop/example_module verify-module example_module
+          pwnshop verify ShellExample
+          pwnshop verify-module example_module
+          cd ../../
+          pwnshop -C pwnshop/example_module render ShellExample
