@@ -12,5 +12,6 @@ file /tmp/shell_example | grep ELF
 strings <(pwnshop build ShellOptimized) | grep -- "-O3"
 pwnshop verify ShellExample
 pwnshop verify-module example_module | grep "failed for 1 challenge"
+pwnshop verify-all | grep "failed for 1 challenge"
 cd /
 pwnshop -C $EXM render ShellExample
