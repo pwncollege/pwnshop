@@ -7,7 +7,7 @@ packages = find_packages(exclude=["example_module"]) + [ "pwnshop.challenges.bas
 
 setup(
     name="pwnshop",
-    version="2.3",
+    version="2.4",
     python_requires=">=3.8",
     packages=packages,
     install_requires=["jinja2==3.0.3", "nbconvert==6.4.4", "asteval", "pyastyle", "pwntools", "ezmp", "docker"],
