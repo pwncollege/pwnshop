@@ -49,6 +49,7 @@ class Challenge:
     PIE = None
     RELRO = "full"
     MASM_FLAG = "-masm=intel"
+    OPTIMIZATION_FLAG = "-O0"
     CANARY = None
     FRAME_POINTER = None
     STATIC = False
@@ -154,6 +155,8 @@ class Challenge:
 
         if self.MASM_FLAG:
             cmd.append(self.MASM_FLAG)
+        if self.OPTIMIZATION_FLAG:
+            cmd.append(self.OPTIMIZATION_FLAG)
 
         cmd.append("-w")
 
