@@ -54,6 +54,7 @@ class Challenge:
     STATIC = False
     EXEC_STACK = False
     STRIP = False
+    DEBUG = False
     LINK_LIBRARIES = []
 
     build_image = None
@@ -148,6 +149,9 @@ class Challenge:
         if self.EXEC_STACK:
             cmd.append("-z")
             cmd.append("execstack")
+
+        if self.DEBUG:
+            cmd.append("-g")
 
         if self.STRIP:
             cmd.append("-s")
