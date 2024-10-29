@@ -85,7 +85,7 @@ def verify_many(args, challenges):
     for challenge in challenges:
         try:
             name = challenge.__name__ if type(challenge) is type else type(challenge).__name__
-            print(f"Verifying {type(challenge).__name__}.")
+            print(f"Verifying {name}.")
 
             if type(challenge) is type:
                 challenge = challenge(seed=args.seed, walkthrough=args.walkthrough)
