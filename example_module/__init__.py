@@ -47,3 +47,11 @@ class ShellOptimized(ShellExample):
     """
     OPTIMIZATION_FLAG = "-O3"
     DEBUG_SYMBOLS = True
+
+class ShellBadVerifier(ShellExample):
+    """
+    Write and execute shellcode to read the flag!
+    """
+
+    def verify(self, binary=None, **kwargs):
+        assert False

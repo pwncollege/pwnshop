@@ -1,3 +1,4 @@
+import traceback
 import functools
 import argparse
 import pwnshop
@@ -79,16 +80,36 @@ def verify_challenge(challenge, debug=False, flag=None, strace=False):
     else:
         challenge.verify()
 
-@with_challenges
-def handle_verify(args, challenges):
+def verify_many(args, challenges):
+    failures = [ ]
     for challenge in challenges:
         print(f"Verifying {type(challenge).__name__}.")
-        verify_challenge(challenge, debug=args.debug, flag=args.flag, strace=args.strace)
+        try:
+            verify_challenge(challenge, debug=args.debug, flag=args.flag, strace=args.strace)
+        except Exception:
+            print(traceback.format_exc())
+            failures.append(challenge)
+
+    if failures:
+        print(f"Verification failed for {len(failures)} challenges:")
+        for f in failures:
+            print(f"FAILED: {f}")
+        return False
+
+    return True
+
+@with_challenges
+def handle_verify(args, challenges):
+    if not verify_many(args, challenges):
+        sys.exit(1)
 
 def handle_verify_module(args):
-    for n,c in enumerate(c(seed=args.seed, walkthrough=args.walkthrough) for c in pwnshop.MODULE_LEVELS[args.module]):
-        print(f"Verifying {args.module} level {n+1}: {type(c).__name__}.")
-        verify_challenge(c, debug=args.debug, flag=args.flag, strace=args.strace)
+    challenges = [
+        c(seed=args.seed, walkthrough=args.walkthrough)
+        for c in pwnshop.MODULE_LEVELS[args.module]
+    ]
+    if not verify_many(args, challenges):
+        sys.exit(1)
 
 def main():
     parser = argparse.ArgumentParser(description="pwnshop challenge emitter", formatter_class=argparse.RawDescriptionHelpFormatter)
