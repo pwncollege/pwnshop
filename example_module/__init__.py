@@ -40,3 +40,10 @@ class ShellExample(ShellBase):
             )
             process.write(shellcode)
             assert self.flag in process.readall()
+
+class ShellOptimized(ShellExample):
+    """
+    Write and execute shellcode to read the flag!
+    """
+    OPTIMIZATION_FLAG = "-O3"
+    DEBUG_SYMBOLS = True
