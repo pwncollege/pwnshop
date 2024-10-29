@@ -20,8 +20,6 @@ from ..register import register_challenge
 pwn.context.arch = "x86_64"
 pwn.context.encoding = "latin"
 
-AUTOREGISTER = True
-
 def hex_str_repr(s):
     hex_s = s.encode("latin").hex()
     return "".join("\\x" + hex_s[i : i + 2] for i in range(0, len(hex_s), 2))
@@ -74,7 +72,8 @@ class Challenge:
         self.walkthrough = kwargs.get("walkthrough")
 
     def __init_subclass__(cls, register=True):
-        if register and AUTOREGISTER:
+        cls_module = inspect.getmodule(cls)
+        if register and getattr(cls_module, "PWNSHOP_AUTOREGISTER", True):
             register_challenge(cls)
 
     @property
