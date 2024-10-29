@@ -8,7 +8,6 @@ import subprocess
 import tempfile
 import textwrap
 import contextlib
-import inspect
 import traceback
 
 import docker
@@ -251,7 +250,7 @@ class Challenge:
                 argv += cmd_args
             if strace:
                 argv = ["strace"] + argv
-                executable = "strace"
+                executable_path = "strace"
         else:
             assert not strace
 
@@ -310,7 +309,7 @@ class Challenge:
             #container.exec_run(f'chown {os.getuid()}:{os.getgid()} ' + bin_path)
             assert ret == 0, out
 
-            ret, out = container.exec_run(f"ldd " + bin_path)
+            ret, out = container.exec_run("ldd " + bin_path)
             assert ret == 0
             lib_paths = filter(lambda x: '/' in x, out.decode().split())
 
