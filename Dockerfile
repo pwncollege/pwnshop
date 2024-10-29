@@ -38,5 +38,6 @@ RUN <<EOF
     rm -rf /opt/capstone
 EOF
 
-RUN pip install pwnshop
+ADD . /pwnshop
+RUN pip install /pwnshop
 RUN echo -n 'pwn.college{TEST}' > /flag
