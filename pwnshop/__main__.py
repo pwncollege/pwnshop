@@ -83,8 +83,12 @@ def verify_challenge(challenge, debug=False, flag=None, strace=False):
 def verify_many(args, challenges):
     failures = [ ]
     for challenge in challenges:
-        print(f"Verifying {type(challenge).__name__}.")
         try:
+            name = challenge.__name__ if type(challenge) is type else type(challenge).__name__
+            print(f"Verifying {type(challenge).__name__}.")
+
+            if type(challenge) is type:
+                challenge = challenge(seed=args.seed, walkthrough=args.walkthrough)
             verify_challenge(challenge, debug=args.debug, flag=args.flag, strace=args.strace)
         except Exception:
             print(traceback.format_exc())
@@ -100,24 +104,13 @@ def verify_many(args, challenges):
 
 @with_challenges
 def handle_verify(args, challenges):
-    if not verify_many(args, challenges):
-        sys.exit(1)
+    return verify_many(args, challenges)
 
 def handle_verify_module(args):
-    challenges = [
-        c(seed=args.seed, walkthrough=args.walkthrough)
-        for c in pwnshop.MODULE_LEVELS[args.module]
-    ]
-    if not verify_many(args, challenges):
-        sys.exit(1)
+    return verify_many(args, pwnshop.MODULE_LEVELS[args.module])
 
 def handle_verify_all(args):
-    challenges = [
-        c(seed=args.seed, walkthrough=args.walkthrough)
-        for c in pwnshop.ALL_CHALLENGES.values()
-    ]
-    if not verify_many(args, challenges):
-        sys.exit(1)
+    return verify_many(args, pwnshop.ALL_CHALLENGES.values())
 
 
 def main():
@@ -223,7 +216,13 @@ def main():
         finally:
             sys.path.pop()
 
-    globals()["handle_" + args.ACTION.replace('-', '_')](args)
+    r = globals()["handle_" + args.ACTION.replace('-', '_')](args)
+    if r in (None, True):
+        return 0
+    elif type(r) is int:
+        return r
+    else:
+        return 1
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
