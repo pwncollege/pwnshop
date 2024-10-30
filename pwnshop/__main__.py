@@ -102,6 +102,7 @@ def verify_many(args, challenges):
                 signal.alarm(args.timeout)
 
             verify_challenge(challenge, debug=args.debug, flag=args.flag, strace=args.strace)
+            signal.alarm(0)
             print(f"SUCCEEDED: {name}")
         except NotImplementedError:
             failures.append(challenge)
