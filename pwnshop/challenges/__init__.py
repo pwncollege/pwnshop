@@ -221,7 +221,7 @@ class Challenge:
                 os.chmod(lib_file, 0o0755)
 
         if flag_symlink:
-            os.symlink("/flag", f"/{flag_symlink}")
+            os.symlink("/flag", f"{flag_symlink}")
 
         yield path
 
@@ -274,6 +274,9 @@ class Challenge:
             finally:
                 if environment_ctx:
                     environment_ctx.__exit__(*sys.exc_info())
+
+    def run_sh(self, command, **kwargs):
+        return pwn.process(command, shell=True, **kwargs)
 
     def metadata(self):
         """
