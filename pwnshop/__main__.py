@@ -105,8 +105,7 @@ def verify_many(args, challenges):
             print(f"SUCCEEDED: {name}")
         except NotImplementedError:
             failures.append(challenge)
-            print(f"NotImplementedError")
-            print(f"FAILED: {name}")
+            print(f"MISSING: {name}")
         except Exception: #pylint:disable=broad-exception-caught
             print(traceback.format_exc())
             failures.append(challenge)
