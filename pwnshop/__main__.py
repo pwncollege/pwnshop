@@ -3,6 +3,7 @@ import functools
 import argparse
 import pwnshop
 import inspect
+import signal
 import random
 import glob
 import sys
@@ -67,6 +68,11 @@ def handle_build(args, challenges):
             with open(f"{args.out.name.replace('.exe', '.pdb')}", 'wb') as f:
                 f.write(pdb)
 
+class TimeoutError(Exception):
+    pass
+def raise_timeout(signum, stack):
+    raise TimeoutError("ACTION TIMED OUT")
+
 def verify_challenge(challenge, debug=False, flag=None, strace=False):
     if debug:
         pwn.context.log_level = "DEBUG"
@@ -83,24 +89,26 @@ def verify_challenge(challenge, debug=False, flag=None, strace=False):
 def verify_many(args, challenges):
     failures = [ ]
     for challenge in challenges:
-        try:
-            name = challenge.__name__ if type(challenge) is type else type(challenge).__name__
-            print(f"Verifying {name}.")
+        name = challenge.__name__ if type(challenge) is type else type(challenge).__name__
 
+        print(f"VERIFYING: {name}")
+
+        try:
             if type(challenge) is type:
                 challenge = challenge(seed=args.seed, walkthrough=args.walkthrough)
+
+            if args.timeout:
+                signal.signal(signal.SIGALRM, raise_timeout)
+                signal.alarm(args.timeout)
+
             verify_challenge(challenge, debug=args.debug, flag=args.flag, strace=args.strace)
-        except Exception:
+            print(f"SUCCEEDED: {name}")
+        except Exception: #pylint:disable=broad-exception-caught
             print(traceback.format_exc())
             failures.append(challenge)
+            print(f"FAILED: {name}")
 
-    if failures:
-        print(f"Verification failed for {len(failures)} challenges:")
-        for f in failures:
-            print(f"FAILED: {f}")
-        return False
-
-    return True
+    return False if failures else True
 
 @with_challenges
 def handle_verify(args, challenges):
@@ -154,6 +162,13 @@ def main():
             "-f",
             "--flag",
             help="change the flag to be verified against",
+        )
+
+        c.add_argument(
+            "-T",
+            "--timeout",
+            type=int,
+            help="set a per-challenge timeout (in seconds) for verification",
         )
 
 
