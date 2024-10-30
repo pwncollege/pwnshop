@@ -20,6 +20,8 @@ RUN apt-get update && xargs apt-get install --no-install-recommends -yqq <<EOF &
         ca-certificates
         curl
         git
+        libseccomp-dev
+        libssl-dev
         python-is-python3
         python3-dev
         python3-pip
