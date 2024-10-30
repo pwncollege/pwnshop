@@ -220,6 +220,12 @@ class Challenge:
                     f.write(lib_bytes)
                 os.chmod(lib_file, 0o0755)
 
+            if self.build_image:
+                # the interpreter is set to */challenge*/lib/ld-blah
+                if os.path.exists("/challenge"):
+                    os.unlink("/challenge")
+                os.symlink(work_dir, "/challenge")
+
         if flag_symlink:
             os.symlink("/flag", f"{flag_symlink}")
 
