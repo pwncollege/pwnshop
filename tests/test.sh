@@ -12,15 +12,15 @@ file /tmp/shell_example | grep ELF
 strings <(pwnshop build ShellOptimized) | grep -- "-O3"
 pwnshop verify ShellExample
 
-pwnshop verify-module example_module > /tmp/out
-grep "ATTEMPTED: 3" /tmp/out
-grep "FAILED: 1" /tmp/out
-grep "SUCCEEDED: 2" /tmp/out
+( pwnshop verify-module example_module || true ) > /tmp/out
+cat /tmp/out | grep "SUCCEEDED: ShellExample"
+cat /tmp/out | grep "SUCCEEDED: ShellOptimized"
+cat /tmp/out | grep "FAILED: ShellBadVerifier"
 
-pwnshop verify-all > /tmp/out
-grep "ATTEMPTED: 3" /tmp/out
-grep "FAILED: 1" /tmp/out
-grep "SUCCEEDED: 2" /tmp/out
+( pwnshop verify-all || true ) > /tmp/out
+cat /tmp/out | grep "SUCCEEDED: ShellExample"
+cat /tmp/out | grep "SUCCEEDED: ShellOptimized"
+cat /tmp/out | grep "FAILED: ShellBadVerifier"
 
 cd /
 pwnshop -C $EXM render ShellExample
