@@ -103,6 +103,10 @@ def verify_many(args, challenges):
 
             verify_challenge(challenge, debug=args.debug, flag=args.flag, strace=args.strace)
             print(f"SUCCEEDED: {name}")
+        except NotImplementedError:
+            failures.append(challenge)
+            print(f"NotImplementedError")
+            print(f"FAILED: {name}")
         except Exception: #pylint:disable=broad-exception-caught
             print(traceback.format_exc())
             failures.append(challenge)
