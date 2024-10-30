@@ -3,6 +3,7 @@ import os
 import re
 import string
 import random
+import signal
 import inspect
 import subprocess
 import tempfile
@@ -543,16 +544,22 @@ class ChallengeGroup(Challenge, register=False):
 
         return result
 
-
-def retry(max_attempts):
+def retry(max_attempts, timeout=None):
     def wrapper(func):
         @contextlib.wraps(func)
         def wrapped(*args, **kwargs):
-            for i in range(max_attempts):
+            for _ in range(max_attempts):
                 try:
+                    if timeout:
+                        def alarm(*args):
+                            raise AssertionError("ATTEMPT TIMED OUT")
+                        signal.signal(signal.SIGALRM, alarm)
+                        signal.alarm(timeout)
                     return func(*args, **kwargs)
                 except AssertionError:
                     traceback.print_exc()
+                finally:
+                    signal.alarm(0)
             else:
                 raise Exception(f"Failed after {max_attempts} attempts!")
 
