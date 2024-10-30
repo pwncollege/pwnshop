@@ -446,7 +446,7 @@ class KernelChallenge(Challenge, register=False):
             with open(f"{workdir}/challenge.c", "w") as f:
                 f.write(source)
 
-            subprocess.run_sh(cmd, stdout=sys.stderr)
+            subprocess.run(cmd, stdout=sys.stderr)
 
             with open(f"{workdir}/challenge.ko", "rb") as f:
                 binary = f.read()
