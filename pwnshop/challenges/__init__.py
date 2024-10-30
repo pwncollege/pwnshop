@@ -225,7 +225,11 @@ class Challenge:
         yield path
 
     @contextlib.contextmanager
-    def verify(
+    def verify(self, binary=None, cmd_args=None, argv=None, **kwargs):
+        raise NotImplementedError()
+
+    @contextlib.contextmanager
+    def run_challenge(
         self,
         binary=None,
         cmd_args=None,
@@ -450,7 +454,7 @@ class KernelChallenge(Challenge, register=False):
             return binary, None, None
 
     @contextlib.contextmanager
-    def verify(
+    def run_challenge(
         self,
         binary=None,
         *,
@@ -525,14 +529,14 @@ class ChallengeGroup(Challenge, register=False):
             for ctx in environment_ctxs:
                 ctx.__exit__(*sys.exc_info())
 
-    def verify(self, binary=None, *, executable_path=None, **kwargs):
+    def run_challenge(self, binary=None, *, executable_path=None, **kwargs):
         environment_ctx = None
         if not executable_path:
             environment_ctx = self.setup_environment(binary=binary)
             executable_path = environment_ctx.__enter__()
 
         challenge = self.challenge_instances[0]
-        result = challenge.verify(binary=binary, executable_path=executable_path)
+        result = challenge.run_challenge(binary=binary, executable_path=executable_path)
 
         if environment_ctx:
             environment_ctx.__exit__(*sys.exc_info())
