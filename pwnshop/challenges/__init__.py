@@ -203,7 +203,7 @@ class Challenge:
             binary, libs, _ = self.build_binary()
         if not path:
             os.makedirs(work_dir, exist_ok=True)
-            path = work_dir + self.__class__.__name__.lower()
+            path = work_dir + "/" + self.__class__.__name__.lower()
             if isinstance(self, KernelChallenge):
                 path += ".ko"
 
