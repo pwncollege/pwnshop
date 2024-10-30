@@ -442,7 +442,7 @@ class KernelChallenge(Challenge, register=False):
             with open(f"{workdir}/challenge.c", "w") as f:
                 f.write(source)
 
-            subprocess.run(cmd, stdout=sys.stderr)
+            subprocess.run_sh(cmd, stdout=sys.stderr)
 
             with open(f"{workdir}/challenge.ko", "rb") as f:
                 binary = f.read()
@@ -476,7 +476,7 @@ class KernelChallenge(Challenge, register=False):
             if environment_ctx:
                 environment_ctx.__exit__(*sys.exc_info())
 
-    def run(self, command, **kwargs):
+    def run_sh(self, command, **kwargs):
         return pwn.process(["vm", "exec", command], **kwargs)
 
     def run_c(self, src, *, user=None, flags=[]):
@@ -488,10 +488,10 @@ class KernelChallenge(Challenge, register=False):
         command = "/tmp/program"
         if user:
             command = f"su {user} -c {command}"
-        return self.run(command)
+        return self.run_sh(command)
 
     def symbol_address(self, symbol):
-        data = self.run(f"grep -P '^[0-9a-f]+\\ .\\ {symbol}(\\t|$)' /proc/kallsyms | grep -oP '^[0-9a-f]+'").readall().strip()
+        data = self.run_sh(f"grep -P '^[0-9a-f]+\\ .\\ {symbol}(\\t|$)' /proc/kallsyms | grep -oP '^[0-9a-f]+'").readall().strip()
         assert len(data.split()) == 1
         return int(data, 16)
 
