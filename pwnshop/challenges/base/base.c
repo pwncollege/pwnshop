@@ -143,17 +143,28 @@
   #undef printf
 {% endif %}
 
+{% if challenge.vbuf_in_constructor %}
+void __attribute__ ((constructor)) disable_buffering {
+       setvbuf(stdin, NULL, _IONBF, 0);
+       setvbuf(stdout, NULL, _IONBF, 1);
+}
+{% endif %}
+
 int main(int argc, char **argv, char **envp)
 {
   // assert(argc > 0);
 
+  {% if challenge.vbuf_in_main %}
   setvbuf(stdin, NULL, _IONBF, 0);
   setvbuf(stdout, NULL, _IONBF, 0);
+  {% endif %}
 
+  {% if challenge.print_greeting %}
   printf("###\n");
   printf("### Welcome to %s!\n", argv[0]);
   printf("###\n");
   printf("\n");
+  {% endif %}
 
   {% if challenge.stack_goodbye %}
     char goodbye[] = "### Goodbye!";
