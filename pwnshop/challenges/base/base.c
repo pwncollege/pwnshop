@@ -252,7 +252,7 @@ int main(int argc, char **argv, char **envp)
 
   {% if challenge.stack_goodbye %}
     puts(goodbye);
-  {% else %}
+  {% elif challenge.constant_goodbye %}
     printf("### Goodbye!\n");
   {% endif %}
 }
