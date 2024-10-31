@@ -57,9 +57,9 @@
     void win()
   {% endif %}
   {
-    static char flag[256];
-    static int flag_fd;
-    static int flag_length;
+    {% if challenge.static_win_function_variables %}static {% endif %}char flag[256];
+    {% if challenge.static_win_function_variables %}static {% endif %}int flag_fd;
+    {% if challenge.static_win_function_variables %}static {% endif %}int flag_length;
 
     {% if challenge.win_function_broken %}
     {
@@ -72,7 +72,7 @@
       if (token != 0x1337) return;
     {% endif %}
 
-    printf("You win! Here is your flag:\n");
+    {% if challenge.win_message %}printf({{win_message}});{% endif %}
     flag_fd = open("/flag", 0);
     if (flag_fd < 0) {
         printf("\n  ERROR: Failed to open the flag -- %s!\n", strerror(errno));
