@@ -16,7 +16,7 @@
 #include <fcntl.h>
 
 {% if challenge.vbuf_in_constructor %}
-void __attribute__ ((constructor)) disable_buffering {
+void __attribute__ ((constructor)) disable_buffering() {
 	setvbuf(stdin, NULL, _IONBF, 0);
 	setvbuf(stdout, NULL, _IONBF, 1);
 }
