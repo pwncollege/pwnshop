@@ -152,8 +152,6 @@ void __attribute__ ((constructor)) disable_buffering {
 
 int main(int argc, char **argv, char **envp)
 {
-  // assert(argc > 0);
-
   {% if challenge.vbuf_in_main %}
   setvbuf(stdin, NULL, _IONBF, 0);
   setvbuf(stdout, NULL, _IONBF, 0);

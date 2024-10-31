@@ -24,7 +24,7 @@ void __attribute__ ((constructor)) disable_buffering {
 
 int main(int argc, char **argv, char **envp)
 {
-  { % if challenge.print_greeting %}
+  {% if challenge.print_greeting %}
   printf("###\n");
   printf("### Welcome to %s!\n", argv[0]);
   printf("###\n\n");
