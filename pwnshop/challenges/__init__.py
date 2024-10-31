@@ -56,6 +56,9 @@ class Challenge:
     DEBUG_SYMBOLS = False
     LINK_LIBRARIES = []
 
+    vbuf_in_main = True
+    vbuf_in_constructor = False
+
     build_image = None
 
     context = {
