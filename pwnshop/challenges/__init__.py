@@ -58,6 +58,7 @@ class Challenge:
 
     vbuf_in_main = True
     vbuf_in_constructor = False
+    print_greeting = True
 
     build_image = None
 
