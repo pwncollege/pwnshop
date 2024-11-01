@@ -28,7 +28,7 @@ def with_challenges(f):
         challenges = [
             challenge_class(challenge=c)(seed=args.seed, walkthrough=args.walkthrough)
             for c in args.challenges
-        ]
+        ] if args.challenges else pwnshop.ALL_CHALLENGES.values()
         return f(args, challenges)
     return f_with_challenge
 
@@ -121,9 +121,6 @@ def handle_verify(args, challenges):
 def handle_verify_module(args):
     return verify_many(args, pwnshop.MODULE_LEVELS[args.module])
 
-def handle_verify_all(args):
-    return verify_many(args, pwnshop.ALL_CHALLENGES.values())
-
 
 def main():
     parser = argparse.ArgumentParser(description="pwnshop challenge emitter", formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -140,7 +137,6 @@ def main():
     command_build = commands.add_parser("build", help="build the binary code of a challenge")
     command_verify = commands.add_parser("verify", help="verify the functionality of a challenge")
     command_verify_module = commands.add_parser("verify-module", help="verify the functionality of all challenges in a module")
-    command_verify_all = commands.add_parser("verify-all", help="verify the functionality of all challenges")
 
     command_render.add_argument(
         "-l",
@@ -154,7 +150,7 @@ def main():
         help="Location to store needed library files",
     )
 
-    for c in [ command_verify, command_verify_module, command_verify_all ]:
+    for c in [ command_verify, command_verify_module ]:
         c.add_argument(
             "-t",
             "--strace",
@@ -212,11 +208,11 @@ def main():
 
     # common to all single-challenge commands
     for subparser in [ command_render, command_build, command_verify ]:
-        subparser.add_argument("challenges", help="the challenges, as multiple ChallengeClassName or ModuleName:level_number", nargs="+")
+        subparser.add_argument("challenges", help="the challenges, as multiple ChallengeClassName or ModuleName:level_number. Default: all challenges.", nargs="*")
 
     command_verify_module.add_argument("module", help="the module to verify")
 
-    parser.epilog = f"""Commands usage:\n\t{command_render.format_usage()}\t{command_build.format_usage()}\t{command_verify.format_usage()}\t{command_verify_module.format_usage()}\t{command_verify_all.format_usage()}"""
+    parser.epilog = f"""Commands usage:\n\t{command_render.format_usage()}\t{command_build.format_usage()}\t{command_verify.format_usage()}\t{command_verify_module.format_usage()}"""
 
     args = parser.parse_args()
     pwn.context.log_level = "ERROR"
