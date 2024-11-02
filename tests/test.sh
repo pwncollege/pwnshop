@@ -17,7 +17,7 @@ cat /tmp/out | grep "SUCCEEDED: ShellExample"
 cat /tmp/out | grep "SUCCEEDED: ShellOptimized"
 cat /tmp/out | grep "FAILED: ShellBadVerifier"
 
-( pwnshop verify-all || true ) > /tmp/out
+( pwnshop verify || true ) > /tmp/out
 cat /tmp/out | grep "SUCCEEDED: ShellExample"
 cat /tmp/out | grep "SUCCEEDED: ShellOptimized"
 cat /tmp/out | grep "FAILED: ShellBadVerifier"
