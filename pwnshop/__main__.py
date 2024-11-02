@@ -81,10 +81,7 @@ def verify_challenge(challenge, debug=False, flag=None, strace=False):
         with open("/flag", "wb") as f:
             f.write(flag.encode())
 
-    if "strace" in inspect.getfullargspec(challenge.verify)[0]:
-        challenge.verify(strace=strace)
-    else:
-        challenge.verify()
+    challenge.verify(strace=strace)
 
 def verify_many(args, challenges):
     failures = [ ]

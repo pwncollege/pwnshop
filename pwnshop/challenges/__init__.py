@@ -271,7 +271,8 @@ class Challenge:
                 argv += cmd_args
             if strace:
                 argv = ["strace"] + argv
-                executable_path = "strace"
+                executable_path = "/usr/bin/strace"
+                kwargs["stderr"] = 2
         else:
             assert not strace
 
