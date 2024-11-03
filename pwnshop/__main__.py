@@ -2,7 +2,6 @@ import traceback
 import functools
 import argparse
 import pwnshop
-import inspect
 import signal
 import random
 import yaml
@@ -72,8 +71,6 @@ def handle_build(args, challenges):
             with open(f"{args.out.name.replace('.exe', '.pdb')}", 'wb') as f:
                 f.write(pdb)
 
-class TimeoutError(Exception):
-    pass
 def raise_timeout(signum, stack):
     raise TimeoutError("ACTION TIMED OUT")
 
@@ -113,7 +110,7 @@ def verify_many(args, challenges):
             failures.append(challenge)
             print(f"FAILED: {name}")
 
-    return False if failures else True
+    return not failures
 
 @with_challenges
 def handle_verify(args, challenges):
@@ -138,40 +135,27 @@ def handle_apply(args):
 
             challenge = pwnshop.ALL_CHALLENGES[c['challenge']](
                 walkthrough=walkthrough,
-                seed=seed + v
+                seed=seed + v,
+                work_dir=out_dir,
+                basename=binary_name,
             )
 
-            src_path = f"{out_dir}/{binary_name}.c"
             if args.no_render:
-                src = open(src_path).read()
+                challenge.source = open(challenge.src_path).read()
             else:
-                src = challenge.render()
-                if keep_source:
-                    open(src_path, "w").write(src)
+                challenge.render()
 
-
-            bin_path = f"{out_dir}/{binary_name}"
             if args.no_build:
-                binary = open(bin_path, "rb").read()
-                libs = [ ]
+                challenge.binary = open(challenge.bin_path, "rb").read()
             else:
-                binary, libs, _ = challenge.build(source=src)
-
-            open(bin_path, "wb").write(binary)
-            os.chmod(bin_path, 0o755)
-
-            libs_path = f"{out_dir}/lib"
-            if libs:
-                os.makedirs(libs_path, exist_ok=True)
-                for lib_name, lib_bytes in libs:
-                    lib_path = libs_path + f'/{lib_name}'
-                    with open(lib_path, 'wb+') as f:
-                        f.write(lib_bytes)
-                    os.chmod(lib_path, 0o755)
+                challenge.build()
 
             if not args.no_verify:
-                challenge.verify(binary=binary)
+                challenge.verify()
                 print("... verification passed")
+
+            if not keep_source:
+                os.unlink(challenge.src_path)
 
             #if pdb:
             #   with open(f"{args.out.name.replace('.exe', '.pdb')}", 'wb') as f:

@@ -30,11 +30,11 @@ class ShellExample(ShellBase):
     shellcode_size = 0x1000
     allocation_size = 0x1000
 
-    def verify(self, binary=None, **kwargs):
+    def verify(self, **kwargs):
         """
         Read 0x1000 bytes onto the stack (address varies every time that it is run)
         """
-        with self.run_challenge(binary, **kwargs) as process:
+        with self.run_challenge(**kwargs) as process:
             shellcode = pwn.asm(
                 pwn.shellcraft.open("/flag") + pwn.shellcraft.sendfile(1, 3, 0, 1024) + pwn.shellcraft.exit(0)
             )

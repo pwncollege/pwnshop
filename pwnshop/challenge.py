@@ -5,6 +5,7 @@ import string
 import random
 import signal
 import inspect
+import logging
 import subprocess
 import tempfile
 import textwrap
@@ -20,6 +21,8 @@ from .register import register_challenge
 
 pwn.context.arch = "x86_64"
 pwn.context.encoding = "latin"
+
+_LOG = logging.getLogger(__name__)
 
 def hex_str_repr(s):
     hex_s = s.encode("latin").hex()
@@ -74,10 +77,23 @@ class Challenge:
         "layout_text_walkthrough": layout_text,
     }
 
-    def __init__(self, *, seed, **kwargs):
+    def __init__(self, *, seed, work_dir=None, basename=None, src_extension=".c", bin_extension=None, walkthrough=False):
         self.seed = seed
         self.random = random.Random(seed)
-        self.walkthrough = kwargs.get("walkthrough")
+        self.walkthrough = walkthrough
+
+        self.source = None
+        self.binary = None
+        self.libraries = None
+        self.set_paths(work_dir=work_dir, basename=basename, src_extension=src_extension or "", bin_extension=bin_extension or "")
+
+    def set_paths(self, work_dir=None, basename=None, src_extension="", bin_extension=""):
+        self.work_dir = tempfile.mkdtemp(prefix='pwnshop-') if work_dir is None else work_dir
+        basename = basename or self.__class__.__name__.lower()
+
+        self.bin_path = f"{self.work_dir}/{basename}{bin_extension}"
+        self.src_path = f"{self.work_dir}/{basename}{src_extension}"
+        self.lib_path = f"{self.work_dir}/lib"
 
     def __init_subclass__(cls, register=True):
         cls_module = inspect.getmodule(cls)
@@ -122,6 +138,11 @@ class Challenge:
         )
         result = pyastyle.format(result, "--style=allman")
         result = re.sub("\n{2,}", "\n\n", result)
+
+        self.source = result
+        with open(self.src_path, "w") as o:
+            o.write(self.source)
+
         return result
 
     def build_compiler_cmd(self):
@@ -181,106 +202,68 @@ class Challenge:
 
         return cmd
 
-    def build(self, source=None):
-        if not source:
-            source = self.render()
+    def build(self):
+        if not self.source:
+            self.render()
 
         cmd = self.build_compiler_cmd()
 
         if self.build_image is None:
-            with tempfile.TemporaryDirectory(prefix='pwnshop-') as workdir:
-                bin_path = f"{workdir}/{self.__class__.__name__.lower()}"
-                cmd.append("-o")
-                cmd.append(bin_path)
-
-                subprocess.check_output(cmd, input=source.encode())
-                with open(bin_path, 'rb') as f:
-                    binary = f.read()
-                libs = None
+            cmd.append("-o")
+            cmd.append(self.bin_path)
+            subprocess.check_output(cmd, input=self.source.encode())
+            with open(self.bin_path, 'rb') as f:
+                self.binary = f.read()
+                self.libraries = None
         else:
-            binary, libs = self._containerized_build(cmd, source)
+            self.binary, self.libraries = self._containerized_build(cmd)
 
-        return binary, libs, None
+            # the interpreter is set to */challenge*/lib/ld-blah
+            if os.path.exists("/challenge"):
+                os.unlink("/challenge")
+            os.symlink(self.work_dir, "/challenge")
 
-    @contextlib.contextmanager
-    def setup_environment(self, binary=None, *, path=None, flag_symlink=None):
-        work_dir = tempfile.mkdtemp(prefix='pwnshop-')
-        libs = None
+        os.chmod(self.bin_path, 0o4755)
 
-        if not binary:
-            binary, libs, _ = self.build()
-        if not path:
-            os.makedirs(work_dir, exist_ok=True)
-            path = work_dir + "/" + self.__class__.__name__.lower()
-            if isinstance(self, KernelChallenge):
-                path += ".ko"
-
-        with open(path, "wb") as f:
-            f.write(binary)
-        os.chmod(path, 0o4755)
-
-        if libs:
-            lib_dir = work_dir + '/lib'
-            os.makedirs(lib_dir, exist_ok=True)
-            for lib_name, lib_bytes in libs:
-                lib_file = lib_dir + '/' + lib_name
-                with open(lib_file, 'wb') as f:
-                    f.write(lib_bytes)
-                os.chmod(lib_file, 0o0755)
-
-            if self.build_image:
-                # the interpreter is set to */challenge*/lib/ld-blah
-                if os.path.exists("/challenge"):
-                    os.unlink("/challenge")
-                os.symlink(work_dir, "/challenge")
-
-        if flag_symlink:
-            os.symlink("/flag", f"{flag_symlink}")
-
-        yield path
+        return self.binary, self.libraries, None
 
     @contextlib.contextmanager
-    def verify(self, binary=None, cmd_args=None, argv=None, **kwargs):
+    def verify(self, cmd_args=None, argv=None, **kwargs):
         raise NotImplementedError()
 
     @contextlib.contextmanager
     def run_challenge(
         self,
-        binary=None,
+        *,
         cmd_args=None,
         argv=None,
-        *,
-        executable_path=None,
         flag_symlink=None,
         close_stdin=False,
         strace=False,
         **kwargs,
     ):
         environment_ctx = None
-        if not executable_path:
-            environment_ctx = self.setup_environment(
-                binary=binary, flag_symlink=flag_symlink
-            )
-            executable_path = environment_ctx.__enter__()
+        if flag_symlink:
+            os.symlink("/flag", f"{flag_symlink}")
 
         with open("/flag", "rb") as f:
             assert f.read() == self.flag
 
         if argv is None:
-            argv = [executable_path]
+            argv = [self.bin_path]
             if cmd_args:
                 argv += cmd_args
             if strace:
                 argv = ["strace"] + argv
-                executable_path = "/usr/bin/strace"
                 kwargs["stderr"] = 2
         else:
             assert not strace
 
-        cwd = os.path.dirname(executable_path)
+        if not self.binary:
+            self.build()
 
         with pwn.process(
-            argv, executable=executable_path, cwd="/", **kwargs
+            argv, **kwargs
         ) as process:
             if close_stdin:
                 process.stdin.close()
@@ -302,62 +285,68 @@ class Challenge:
             "description": inspect.cleandoc(self.__doc__) if self.__doc__ else ""
         }
 
-    def _containerized_build(self, cmd, source):
+    def _containerized_build(self, cmd):
         """
         Spins up a docker container to build target, returns binary and linked libraries
         """
-        cont_vpath =  '/mnt/pwnshop'
-        bin_path =  cont_vpath + '/' + self.__class__.__name__.lower()
-
         cmd.append("-o")
-        cmd.append(bin_path)
-        cmd.append(f'{cont_vpath}/source.c')
+        cmd.append(self.bin_path)
+        cmd.append(self.src_path)
 
-        with tempfile.TemporaryDirectory(prefix='pwnshop-') as workdir:
-            os.makedirs(f"{workdir}/lib", exist_ok=True)
-            client = docker.from_env()
-            img, tag = self.build_image.split(':')
-            client.images.pull(img, tag=tag)
+        if not self.source:
+            self.render()
 
-            #TODO: container life is context manager
-            container = client.containers.run(img + ':' + tag,
-                                    'sleep 300',
-                                    auto_remove=True,
-                                    detach=True,
-                                    volumes = {workdir : {'bind': cont_vpath,
-                                                                'mode': 'rw'}})
-            code, out = container.exec_run('/bin/bash -c "apt update && apt install -y gcc patchelf && mkdir -p /tmp/pwnshop"')
-            with open(f'{workdir}/source.c', 'w+') as f:
-                f.write(source)
+        os.makedirs(f"{self.lib_path}", exist_ok=True)
 
-            ret, out = container.exec_run(cmd)
-            #container.exec_run(f'chmod 0777 ' + bin_path)
-            #container.exec_run(f'chown {os.getuid()}:{os.getgid()} ' + bin_path)
-            assert ret == 0, out
+        client = docker.from_env()
+        img, tag = self.build_image.split(':')
+        client.images.pull(img, tag=tag)
 
-            ret, out = container.exec_run("ldd " + bin_path)
-            assert ret == 0
-            lib_paths = filter(lambda x: '/' in x, out.decode().split())
+        #TODO: container life is context manager
+        container = client.containers.run(
+            img + ':' + tag,
+            'sleep 300',
+            auto_remove=True,
+            detach=True,
+            volumes = {self.work_dir : {'bind': self.work_dir, 'mode': 'rw'}}
+        )
+        ret, out = container.exec_run('/bin/bash -c "apt update && apt install -y gcc patchelf && mkdir -p /tmp/pwnshop"')
+        assert ret == 0
 
-            libs = []
-            for p in lib_paths:
-                lib_name = os.path.basename(p)
-                container.exec_run(f'cp {p} {cont_vpath}/lib/{lib_name}')
+        ret, out = container.exec_run(cmd)
+        #container.exec_run(f'chmod 0777 ' + bin_path)
+        #container.exec_run(f'chown {os.getuid()}:{os.getgid()} ' + bin_path)
+        assert ret == 0, out
 
-                container.exec_run(f'chmod 0766 {cont_vpath}/lib/{lib_name}')
-                container.exec_run(f'chown {os.getuid()}:{os.getgid()} {cont_vpath}/lib/{lib_name}')
+        ret, out = container.exec_run("ldd " + self.bin_path)
+        assert ret == 0
+        lib_paths = filter(lambda x: '/' in x, out.decode().split())
 
-                with open(f'{workdir}/lib/{lib_name}', 'rb') as f:
-                    libs.append((lib_name, f.read()))
-                if "ld-linux" in lib_name:
-                    ret, out = container.exec_run(f'patchelf --set-interpreter /challenge/lib/{lib_name} ' + bin_path, workdir=cont_vpath)
-                else:
-                    container.exec_run(f'patchelf --replace-needed {lib_name} /challenge/lib/{lib_name} ' + bin_path, workdir=cont_vpath)
+        libs = []
+        for p in lib_paths:
+            lib_name = os.path.basename(p)
+            container.exec_run(f'cp {p} {self.lib_path}/{lib_name}')
 
-            with open(f"{workdir}/{self.__class__.__name__.lower()}", 'rb') as f:
-                binary = f.read()
+            container.exec_run(f'chmod 0766 {self.lib_path}/{lib_name}')
+            container.exec_run(f'chown {os.getuid()}:{os.getgid()} {self.lib_path}/{lib_name}')
 
-            return binary, libs
+            with open(f'{self.lib_path}/{lib_name}', 'rb') as f:
+                libs.append((lib_name, f.read()))
+            if "ld-linux" in lib_name:
+                ret, out = container.exec_run(
+                    f'patchelf --set-interpreter /challenge/lib/{lib_name} ' + self.bin_path,
+                    workdir=self.work_dir
+                )
+            else:
+                container.exec_run(
+                    f'patchelf --replace-needed {lib_name} /challenge/lib/{lib_name} ' + self.bin_path,
+                    workdir=self.work_dir
+                )
+
+        with open(f"{self.bin_path}", 'rb') as f:
+            binary = f.read()
+
+        return binary, libs
 
 class WindowsChallenge(Challenge, register=False):
     COMPILER = "cl"
@@ -393,6 +382,8 @@ class WindowsChallenge(Challenge, register=False):
 
         return cmd
         # Linker options
+
+        #pylint:disable=unreachable
         cmd.append('/LINK')
         if self.DYNAMIC_BASE is True:
             cmd.append('/DYNAMICBASE')
@@ -441,7 +432,10 @@ class WindowsChallenge(Challenge, register=False):
             raise NotImplementedError("Containerized Windows build not supported")
 
 class KernelChallenge(Challenge, register=False):
-    def build(self, source=None):
+    def __init__(self, bin_extension=".ko", **kwargs):
+        super().__init__(bin_extension=bin_extension, **kwargs)
+
+    def build(self):
         with tempfile.TemporaryDirectory() as workdir:
             with open(f"{workdir}/Makefile", "w") as f:
                 f.write(
@@ -459,54 +453,47 @@ class KernelChallenge(Challenge, register=False):
 
             cmd = ["make", "-C", workdir]
 
-            if not source:
-                source = self.render()
+            if not self.source:
+                self.render()
 
             with open(f"{workdir}/challenge.c", "w") as f:
-                f.write(source)
+                f.write(self.source)
 
-            subprocess.run(cmd, stdout=sys.stderr)
+            subprocess.run(cmd, stdout=sys.stderr, check=True)
 
             with open(f"{workdir}/challenge.ko", "rb") as f:
-                binary = f.read()
+                self.binary = f.read()
+                with open(self.bin_path, "wb") as o:
+                    o.write(self.binary)
 
-            return binary, None, None
+            return self.binary, None, None
 
     @contextlib.contextmanager
-    def run_challenge(
+    def run_challenge( #pylint:disable=arguments-differ
         self,
-        binary=None,
         *,
-        executable_path=None,
         flag_symlink=None,
         **kwargs,
     ):
-        environment_ctx = None
-        if not executable_path:
-            environment_ctx = self.setup_environment(
-                binary=binary, flag_symlink=flag_symlink
-            )
-            executable_path = environment_ctx.__enter__()
+        if flag_symlink:
+            os.symlink("/flag", f"{flag_symlink}")
 
         # ./run.sh ./generate.py -m BabyKernel -i1 -v -l1 -vvv
-        subprocess.run(["passwd", "-d", "root"])
-        subprocess.run(["vm", "restart"])
-        subprocess.run(["ln", "-sf", executable_path, "/challenge/challenge.ko"])
+        subprocess.run(["passwd", "-d", "root"], check=True)
+        subprocess.run(["vm", "restart"], check=True)
+        subprocess.run(["ln", "-sf", self.bin_path, "/challenge/challenge.ko"], check=True)
 
-        try:
-            yield
-        finally:
-            if environment_ctx:
-                environment_ctx.__exit__(*sys.exc_info())
+        yield
 
     def run_sh(self, command, **kwargs):
         return pwn.process(["vm", "exec", command], **kwargs)
 
-    def run_c(self, src, *, user=None, flags=[]):
+    def run_c(self, src, *, user=None, flags=()):
         with open("/tmp/program.c", "w") as f:
             f.write(textwrap.dedent(src))
         subprocess.run(
-            ["gcc", "-static", "/tmp/program.c", "-o", "/tmp/program"] + flags
+            ["gcc", "-static", "/tmp/program.c", "-o", "/tmp/program"] + list(flags),
+            check=True
         )
         command = "/tmp/program"
         if user:
@@ -520,7 +507,7 @@ class KernelChallenge(Challenge, register=False):
 
 
 class ChallengeGroup(Challenge, register=False):
-    challenges = NotImplemented
+    challenges = [ ]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -536,29 +523,9 @@ class ChallengeGroup(Challenge, register=False):
         for challenge in self.challenge_instances:
             yield challenge.build()
 
-    @contextlib.contextmanager
-    def setup_environment(self, binary=None, *, path=None, flag_symlink=None):
-        environment_ctxs = [
-            challenge.setup_environment() for challenge in self.challenge_instances
-        ]
-        paths = [ctx.__enter__() for ctx in environment_ctxs]
-        try:
-            yield paths[0]
-        finally:
-            for ctx in environment_ctxs:
-                ctx.__exit__(*sys.exc_info())
-
-    def run_challenge(self, binary=None, *, executable_path=None, **kwargs):
-        environment_ctx = None
-        if not executable_path:
-            environment_ctx = self.setup_environment(binary=binary)
-            executable_path = environment_ctx.__enter__()
-
+    def run_challenge(self, **kwargs): #pylint:disable=arguments-differ
         challenge = self.challenge_instances[0]
-        result = challenge.run_challenge(binary=binary, executable_path=executable_path)
-
-        if environment_ctx:
-            environment_ctx.__exit__(*sys.exc_info())
+        result = challenge.run_challenge()
 
         return result
 
@@ -578,8 +545,8 @@ def retry(max_attempts, timeout=None):
                     traceback.print_exc()
                 finally:
                     signal.alarm(0)
-            else:
-                raise Exception(f"Failed after {max_attempts} attempts!")
+
+            raise RuntimeError(f"Failed after {max_attempts} attempts!")
 
         return wrapped
 
