@@ -53,7 +53,7 @@ def handle_list(args): #pylint:disable=unused-argument
 @with_challenges
 def handle_build(args, challenges):
     for challenge in challenges:
-        binary, libs, pdb = challenge.build_binary()
+        binary, libs, pdb = challenge.build()
         args.out.buffer.write(binary)
         if os.path.isfile(args.out.name):
             os.chmod(args.out.name, 0o755)
@@ -152,7 +152,7 @@ def handle_apply(args):
                 binary = open(bin_path, "rb").read()
                 libs = [ ]
             else:
-                binary, libs, _ = challenge.build_binary(source=src)
+                binary, libs, _ = challenge.build(source=src)
 
             open(bin_path, "wb").write(binary)
             os.chmod(bin_path, 0o755)

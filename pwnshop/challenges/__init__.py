@@ -180,7 +180,7 @@ class Challenge:
 
         return cmd
 
-    def build_binary(self, source=None):
+    def build(self, source=None):
         if not source:
             source = self.render()
 
@@ -207,7 +207,7 @@ class Challenge:
         libs = None
 
         if not binary:
-            binary, libs, _ = self.build_binary()
+            binary, libs, _ = self.build()
         if not path:
             os.makedirs(work_dir, exist_ok=True)
             path = work_dir + "/" + self.__class__.__name__.lower()
@@ -406,7 +406,7 @@ class WindowsChallenge(Challenge, register=False):
 
         return cmd
 
-    def build_binary(self, source=None):
+    def build(self, source=None):
         if not source:
             source = self.render()
 
@@ -440,7 +440,7 @@ class WindowsChallenge(Challenge, register=False):
             raise NotImplementedError("Containerized Windows build not supported")
 
 class KernelChallenge(Challenge, register=False):
-    def build_binary(self, source=None):
+    def build(self, source=None):
         with tempfile.TemporaryDirectory() as workdir:
             with open(f"{workdir}/Makefile", "w") as f:
                 f.write(
@@ -531,9 +531,9 @@ class ChallengeGroup(Challenge, register=False):
         for challenge in self.challenge_instances:
             yield challenge.render()
 
-    def build_binary(self):
+    def build(self):
         for challenge in self.challenge_instances:
-            yield challenge.build_binary()
+            yield challenge.build()
 
     @contextlib.contextmanager
     def setup_environment(self, binary=None, *, path=None, flag_symlink=None):
