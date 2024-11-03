@@ -16,7 +16,7 @@ import pyastyle
 import pwn
 from jinja2 import Environment, PackageLoader, ChoiceLoader, contextfilter
 
-from ..register import register_challenge
+from .register import register_challenge
 
 pwn.context.arch = "x86_64"
 pwn.context.encoding = "latin"
@@ -107,6 +107,7 @@ class Challenge:
     def render(self):
         env = Environment(loader=ChoiceLoader([
             PackageLoader(__name__, ""),
+            PackageLoader(__name__, "templates"),
             PackageLoader(inspect.getmodule(self).__name__, ""),
             PackageLoader(inspect.getmodule(self).__name__, ".."),
         ]), trim_blocks=True)
