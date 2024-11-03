@@ -82,7 +82,12 @@ def verify_challenge(challenge, debug=False, flag=None, strace=False):
         with open("/flag", "wb") as f:
             f.write(flag.encode())
 
-    challenge.verify(strace=strace)
+    try:
+        challenge.verify(strace=strace)
+    except TypeError as e:
+        if "strace" not in str(e):
+            raise
+        challenge.verify()
 
 def verify_many(args, challenges):
     failures = [ ]
