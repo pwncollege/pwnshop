@@ -25,6 +25,7 @@ RUN apt-get update && xargs apt-get install --no-install-recommends -yqq <<EOF &
         python-is-python3
         python3-dev
         python3-pip
+        python3-yaml
         qemu-system
         sudo
         unzip
