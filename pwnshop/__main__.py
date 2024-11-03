@@ -145,7 +145,7 @@ def handle_apply(args):
                 basename=binary_name,
             )
 
-            if args.no_render:
+            if args.no_render and not args.no_build:
                 challenge.source = open(challenge.src_path).read()
             else:
                 challenge.render()
@@ -159,7 +159,7 @@ def handle_apply(args):
                 challenge.verify()
                 print("... verification passed")
 
-            if not keep_source:
+            if not keep_source and os.path.exists(challenge.src_path):
                 os.unlink(challenge.src_path)
 
             #if pdb:
