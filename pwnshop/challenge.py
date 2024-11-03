@@ -89,6 +89,7 @@ class Challenge:
 
     def set_paths(self, work_dir=None, basename=None, src_extension="", bin_extension=""):
         self.work_dir = tempfile.mkdtemp(prefix='pwnshop-') if work_dir is None else work_dir
+        os.makedirs(self.work_dir, exist_ok=True)
         basename = basename or self.__class__.__name__.lower()
 
         self.bin_path = f"{self.work_dir}/{basename}{bin_extension}"
