@@ -29,7 +29,10 @@ def with_challenges(f):
         challenges = [
             challenge_class(challenge=c)(seed=args.seed, walkthrough=args.walkthrough)
             for c in args.challenges
-        ] if args.challenges else pwnshop.ALL_CHALLENGES.values()
+        ] if args.challenges else [
+            c(seed=args.seed, walkthrough=args.walkthrough)
+            for c in pwnshop.ALL_CHALLENGES.values()
+        ]
         return f(args, challenges)
     return f_with_challenge
 
