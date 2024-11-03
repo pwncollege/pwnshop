@@ -36,7 +36,7 @@ def with_challenges(f):
 @with_challenges
 def handle_render(args, challenges):
     for challenge in challenges:
-        src = challenge.generate_source()
+        src = challenge.render()
         if not args.lineno:
             args.out.write(src+"\n")
         else:
@@ -142,7 +142,7 @@ def handle_apply(args):
             if args.no_render:
                 src = open(src_path).read()
             else:
-                src = challenge.generate_source()
+                src = challenge.render()
                 if keep_source:
                     open(src_path, "w").write(src)
 

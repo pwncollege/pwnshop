@@ -104,7 +104,7 @@ class Challenge:
     def random_word(self, length, vocabulary=string.ascii_lowercase):
         return "".join(self.random.choice(vocabulary) for _ in range(length))
 
-    def generate_source(self):
+    def render(self):
         env = Environment(loader=ChoiceLoader([
             PackageLoader(__name__, ""),
             PackageLoader(inspect.getmodule(self).__name__, ""),
@@ -182,7 +182,7 @@ class Challenge:
 
     def build_binary(self, source=None):
         if not source:
-            source = self.generate_source()
+            source = self.render()
 
         cmd = self.build_compiler_cmd()
 
@@ -408,7 +408,7 @@ class WindowsChallenge(Challenge, register=False):
 
     def build_binary(self, source=None):
         if not source:
-            source = self.generate_source()
+            source = self.render()
 
         cmd = self.build_compiler_cmd()
 
@@ -459,7 +459,7 @@ class KernelChallenge(Challenge, register=False):
             cmd = ["make", "-C", workdir]
 
             if not source:
-                source = self.generate_source()
+                source = self.render()
 
             with open(f"{workdir}/challenge.c", "w") as f:
                 f.write(source)
@@ -527,9 +527,9 @@ class ChallengeGroup(Challenge, register=False):
             challenge(*args, **kwargs) for challenge in self.challenges
         ]
 
-    def generate_source(self):
+    def render(self):
         for challenge in self.challenge_instances:
-            yield challenge.generate_source()
+            yield challenge.render()
 
     def build_binary(self):
         for challenge in self.challenge_instances:
