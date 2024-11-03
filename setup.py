@@ -7,7 +7,7 @@ packages = find_packages(exclude=["example_module"]) + [ "pwnshop.templates", "p
 
 setup(
     name="pwnshop",
-    version="5.2",
+    version="5.3",
     python_requires=">=3.8",
     packages=packages,
     install_requires=["jinja2==3.0.3", "nbconvert==6.4.4", "asteval", "pyastyle", "pwntools", "ezmp", "docker"],
