@@ -5,6 +5,7 @@ import pwnshop
 import inspect
 import signal
 import random
+import yaml
 import glob
 import sys
 import pwn #pylint:disable=import-error
@@ -118,6 +119,60 @@ def handle_verify(args, challenges):
 def handle_verify_module(args):
     return verify_many(args, pwnshop.MODULE_LEVELS[args.module])
 
+def handle_apply(args):
+    y = yaml.safe_load(open(args.yaml))
+    for c in y['challenges']:
+        seed = c.get('seed', y.get('seed', args.seed))
+        variants = c.get('variants', y.get('variants', 1))
+        walkthrough = c.get('walkthrough', y.get('walkthrough', args.walkthrough))
+        keep_source = c.get('keep_source', y.get('keep_source', False))
+        binary_name = c.get('binary_name', y.get('binary_name', c['id']))
+
+        for v in range(variants):
+            out_dir = f"{os.path.dirname(args.yaml)}/{c['id']}/_{v}"
+            print(f"Building {c['id']} variant {v} into {out_dir}.")
+            os.makedirs(out_dir, exist_ok=True)
+
+            challenge = pwnshop.ALL_CHALLENGES[c['challenge']](
+                walkthrough=walkthrough,
+                seed=seed + v
+            )
+
+            src_path = f"{out_dir}/{binary_name}.c"
+            if args.no_render:
+                src = open(src_path).read()
+            else:
+                src = challenge.generate_source()
+                if keep_source:
+                    open(src_path, "w").write(src)
+
+
+            bin_path = f"{out_dir}/{binary_name}"
+            if args.no_build:
+                binary = open(bin_path, "rb").read()
+                libs = [ ]
+            else:
+                binary, libs, _ = challenge.build_binary(source=src)
+
+            open(bin_path, "wb").write(binary)
+            os.chmod(bin_path, 0o755)
+
+            libs_path = f"{out_dir}/lib"
+            if libs:
+                os.makedirs(libs_path, exist_ok=True)
+                for lib_name, lib_bytes in libs:
+                    lib_path = libs_path + f'/{lib_name}'
+                    with open(lib_path, 'wb+') as f:
+                        f.write(lib_bytes)
+                    os.chmod(lib_path, 0o755)
+
+            if not args.no_verify:
+                challenge.verify(binary=binary)
+                print("... verification passed")
+
+            #if pdb:
+            #   with open(f"{args.out.name.replace('.exe', '.pdb')}", 'wb') as f:
+            #       f.write(pdb)
 
 def main():
     parser = argparse.ArgumentParser(description="pwnshop challenge emitter", formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -134,6 +189,7 @@ def main():
     command_build = commands.add_parser("build", help="build the binary code of a challenge")
     command_verify = commands.add_parser("verify", help="verify the functionality of a challenge")
     command_verify_module = commands.add_parser("verify-module", help="verify the functionality of all challenges in a module")
+    command_apply = commands.add_parser("apply", help="parse a yaml and generate the defined challenges")
 
     command_render.add_argument(
         "-l",
@@ -145,6 +201,26 @@ def main():
     command_build.add_argument(
         "--lpath",
         help="Location to store needed library files",
+    )
+
+    command_apply.add_argument(
+        "--no-verify",
+        action="store_true",
+        help="Do not verify the built binaries.",
+    )
+    command_apply.add_argument(
+        "--no-build",
+        action="store_true",
+        help="Do not build the binaries (only verify).",
+    )
+    command_apply.add_argument(
+        "--no-render",
+        action="store_true",
+        help="Do not re-render the code (will be ignored if no code is available).",
+    )
+    command_apply.add_argument(
+        "yaml",
+        help="Path to the yaml.",
     )
 
     for c in [ command_verify, command_verify_module ]:

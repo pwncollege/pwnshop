@@ -22,5 +22,13 @@ cat /tmp/out | grep "SUCCEEDED: ShellExample"
 cat /tmp/out | grep "SUCCEEDED: ShellOptimized"
 cat /tmp/out | grep "FAILED: ShellBadVerifier"
 
+pwnshop apply ../example_deploy/pwnshop.yml
+SOURCES=( ../example_deploy/*/*/*.c )
+BINS=( ../example_deploy/*/*/shell )
+FILES=( ../example_deploy/*/*/* )
+[ "${#SOURCES[@]}" -eq 1 ] || exit 1
+[ "${#BINS[@]}" -eq 5 ] || exit 1
+[ "${#FILES[@]}" -eq 6 ] || exit 1
+
 cd /
 pwnshop -C $EXM render ShellExample
