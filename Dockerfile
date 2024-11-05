@@ -27,6 +27,7 @@ RUN apt-get update && xargs apt-get install --no-install-recommends -yqq <<EOF &
         python3-pip
         python3-yaml
         qemu-system
+        strace
         sudo
         unzip
         wget

@@ -25,13 +25,25 @@ def challenge_class(challenge):
 def with_challenges(f):
     @functools.wraps(f)
     def f_with_challenge(args):
-        challenges = [
-            challenge_class(challenge=c)(seed=args.seed, walkthrough=args.walkthrough)
-            for c in args.challenges
-        ] if args.challenges else [
-            c(seed=args.seed, walkthrough=args.walkthrough)
-            for c in pwnshop.ALL_CHALLENGES.values()
-        ]
+        challenges = [ ]
+        for m in (args.module or [ ]) if "module" in args else [ ]:
+            challenges += [
+                c(seed=args.seed, walkthrough=args.walkthrough)
+                for c in pwnshop.MODULE_LEVELS[m]
+            ]
+
+        if args.challenges:
+            challenges += [
+                challenge_class(challenge=c)(seed=args.seed, walkthrough=args.walkthrough)
+                for c in args.challenges
+            ]
+
+        if not challenges:
+            challenges += [
+                c(seed=args.seed, walkthrough=args.walkthrough)
+                for c in pwnshop.ALL_CHALLENGES.values()
+            ]
+
         return f(args, challenges)
     return f_with_challenge
 
@@ -121,9 +133,6 @@ def verify_many(args, challenges):
 def handle_verify(args, challenges):
     return verify_many(args, challenges)
 
-def handle_verify_module(args):
-    return verify_many(args, pwnshop.MODULE_LEVELS[args.module])
-
 def handle_apply(args):
     y = yaml.safe_load(open(args.yaml))
     for c in y['challenges']:
@@ -180,7 +189,6 @@ def main():
     command_render = commands.add_parser("render", help="render the source code of a challenge")
     command_build = commands.add_parser("build", help="build the binary code of a challenge")
     command_verify = commands.add_parser("verify", help="verify the functionality of a challenge")
-    command_verify_module = commands.add_parser("verify-module", help="verify the functionality of all challenges in a module")
     command_apply = commands.add_parser("apply", help="parse a yaml and generate the defined challenges")
 
     command_render.add_argument(
@@ -215,26 +223,32 @@ def main():
         help="Path to the yaml.",
     )
 
-    for c in [ command_verify, command_verify_module ]:
-        c.add_argument(
-            "-t",
-            "--strace",
-            action="store_true",
-            help="print out strace information during verification",
-        )
+    command_verify.add_argument(
+        "-t",
+        "--strace",
+        action="store_true",
+        help="print out strace information during verification",
+    )
 
-        c.add_argument(
-            "-f",
-            "--flag",
-            help="change the flag to be verified against",
-        )
+    command_verify.add_argument(
+        "-f",
+        "--flag",
+        help="change the flag to be verified against",
+    )
 
-        c.add_argument(
-            "-T",
-            "--timeout",
-            type=int,
-            help="set a per-challenge timeout (in seconds) for verification",
-        )
+    command_verify.add_argument(
+        "-T",
+        "--timeout",
+        type=int,
+        help="set a per-challenge timeout (in seconds) for verification",
+    )
+
+    command_verify.add_argument(
+        "-m",
+        "--module",
+        help="Verify all the challenges in a module. Can be specified multiple times.",
+        action="append"
+    )
 
 
     # where to write
@@ -275,9 +289,7 @@ def main():
     for subparser in [ command_render, command_build, command_verify ]:
         subparser.add_argument("challenges", help="the challenges, as multiple ChallengeClassName or ModuleName:level_number. Default: all challenges.", nargs="*")
 
-    command_verify_module.add_argument("module", help="the module to verify")
-
-    parser.epilog = f"""Commands usage:\n\t{command_render.format_usage()}\t{command_build.format_usage()}\t{command_verify.format_usage()}\t{command_verify_module.format_usage()}"""
+    parser.epilog = f"""Commands usage:\n\t{command_render.format_usage()}\t{command_build.format_usage()}\t{command_verify.format_usage()}"""
 
     args = parser.parse_args()
     pwn.context.log_level = "ERROR"

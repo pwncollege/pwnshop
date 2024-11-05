@@ -12,7 +12,7 @@ file /tmp/shell_example | grep ELF
 strings <(pwnshop build ShellOptimized) | grep -- "-O3"
 pwnshop verify ShellExample
 
-( pwnshop verify-module example_module || true ) > /tmp/out
+( pwnshop verify -m example_module || true ) > /tmp/out
 cat /tmp/out | grep "SUCCEEDED: ShellExample"
 cat /tmp/out | grep "SUCCEEDED: ShellOptimized"
 cat /tmp/out | grep "FAILED: ShellBadVerifier"
