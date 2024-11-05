@@ -63,7 +63,7 @@ class Challenge:
     vbuf_in_constructor = False
     print_greeting = True
     constant_goodbye = True
-    win_message = "You win! Here is your flag:\n"
+    win_message = "You win! Here is your flag:"
     static_win_function_variables = True
 
     build_image = None

@@ -72,7 +72,7 @@
       if (token != 0x1337) return;
     {% endif %}
 
-    {% if challenge.win_message %}printf({{win_message}});{% endif %}
+    {% if challenge.win_message %}puts("{{challenge.win_message}}");{% endif %}
     flag_fd = open("/flag", 0);
     if (flag_fd < 0) {
         printf("\n  ERROR: Failed to open the flag -- %s!\n", strerror(errno));
