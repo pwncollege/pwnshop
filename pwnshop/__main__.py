@@ -51,7 +51,7 @@ def with_challenges(f):
 def handle_render(args, challenges):
     for challenge in challenges:
         src = challenge.render()
-        if not args.lineno:
+        if not args.line_numbers:
             args.out.write(src+"\n")
         else:
             for i, line in enumerate(src.splitlines()):
@@ -192,8 +192,7 @@ def main():
     command_apply = commands.add_parser("apply", help="parse a yaml and generate the defined challenges")
 
     command_render.add_argument(
-        "-l",
-        "--lineno",
+        "--line-numbers",
         action="store_true",
         help="render line numbers",
     )
@@ -224,7 +223,6 @@ def main():
     )
 
     command_verify.add_argument(
-        "-t",
         "--strace",
         action="store_true",
         help="print out strace information during verification",
@@ -237,7 +235,6 @@ def main():
     )
 
     command_verify.add_argument(
-        "-T",
         "--timeout",
         type=int,
         help="set a per-challenge timeout (in seconds) for verification",
