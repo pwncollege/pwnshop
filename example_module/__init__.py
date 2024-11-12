@@ -23,7 +23,7 @@ class ShellBase(pwnshop.Challenge, register=False): # don't register this as an 
 
 class ShellExample(ShellBase):
     """
-    Write and execute shellcode to read the flag!
+    An example shellcode loader.
     """
 
     stack_shellcode = True
@@ -43,15 +43,24 @@ class ShellExample(ShellBase):
 
 class ShellOptimized(ShellExample):
     """
-    Write and execute shellcode to read the flag!
+    The same example, but optimized with -O3.
     """
     OPTIMIZATION_FLAG = "-O3"
     DEBUG_SYMBOLS = True
 
 class ShellBadVerifier(ShellExample):
     """
-    Write and execute shellcode to read the flag!
+    The same example, with a verifier that fails.
     """
 
     def verify(self, binary=None, **kwargs):
         assert False
+
+class Shell1604(ShellExample):
+    """
+    The same example, built using 16.04.
+    """
+
+    BUILD_IMAGE = "ubuntu:16.04"
+    BUILD_DEPENDENCIES = "libcapstone-dev"
+    PIN_LIBRARIES = True

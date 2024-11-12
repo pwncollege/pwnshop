@@ -15,3 +15,6 @@ challenges:
 - id: shell-optimized
   challenge: ShellOptimized
   variants: 2
+- id: shell-1604
+  challenge: Shell1604
+  variants: 2

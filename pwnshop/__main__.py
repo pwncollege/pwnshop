@@ -150,7 +150,7 @@ def handle_apply(args):
             challenge = pwnshop.ALL_CHALLENGES[c['challenge']](
                 walkthrough=walkthrough,
                 seed=seed + v,
-                work_dir=out_dir,
+                work_dir=os.path.abspath(out_dir),
                 basename=binary_name,
             )
 

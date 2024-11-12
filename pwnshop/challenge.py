@@ -58,6 +58,10 @@ class Challenge:
     STRIP = False
     DEBUG_SYMBOLS = False
     LINK_LIBRARIES = []
+    BUILD_IMAGE = None
+    BUILD_DEPENDENCIES = ""
+    PIN_LIBRARIES = False
+
 
     vbuf_in_main = True
     vbuf_in_constructor = False
@@ -65,8 +69,6 @@ class Challenge:
     constant_goodbye = True
     win_message = "You win! Here is your flag:"
     static_win_function_variables = True
-
-    BUILD_IMAGE = None
 
     context = {
         "min": min,
@@ -293,6 +295,8 @@ class Challenge:
         cmd.append("-o")
         cmd.append(self.bin_path)
         cmd.append(self.src_path)
+        for lib in self.LINK_LIBRARIES:
+            cmd.append("-l" + lib)
 
         if not self.source:
             self.render()
@@ -311,38 +315,45 @@ class Challenge:
             detach=True,
             volumes = {self.work_dir : {'bind': self.work_dir, 'mode': 'rw'}}
         )
-        ret, out = container.exec_run('/bin/bash -c "apt update && apt install -y gcc patchelf && mkdir -p /tmp/pwnshop"')
-        assert ret == 0
+        ret, out = container.exec_run(f'/bin/bash -c "apt update && apt install -y gcc patchelf {self.BUILD_DEPENDENCIES} && mkdir -p /tmp/pwnshop"')
+        if ret != 0:
+            print("DEPENDENCY INSTALL ERROR:")
+            print(out.decode('latin1'))
+        assert ret == 0, out
 
         ret, out = container.exec_run(cmd)
         #container.exec_run(f'chmod 0777 ' + bin_path)
-        #container.exec_run(f'chown {os.getuid()}:{os.getgid()} ' + bin_path)
+        container.exec_run(f'chown {os.getuid()}:{os.getgid()} {self.bin_path}')
+        if ret != 0:
+            print("BUILD ERROR:")
+            print(out.decode('latin1'))
         assert ret == 0, out
 
-        ret, out = container.exec_run("ldd " + self.bin_path)
-        assert ret == 0
-        lib_paths = filter(lambda x: '/' in x, out.decode().split())
-
         libs = []
-        for p in lib_paths:
-            lib_name = os.path.basename(p)
-            container.exec_run(f'cp {p} {self.lib_path}/{lib_name}')
+        if self.PIN_LIBRARIES:
+            ret, out = container.exec_run("ldd " + self.bin_path)
+            assert ret == 0
+            lib_paths = filter(lambda x: '/' in x, out.decode().split())
 
-            container.exec_run(f'chmod 0766 {self.lib_path}/{lib_name}')
-            container.exec_run(f'chown {os.getuid()}:{os.getgid()} {self.lib_path}/{lib_name}')
+            for p in lib_paths:
+                lib_name = os.path.basename(p)
+                container.exec_run(f'cp {p} {self.lib_path}/{lib_name}')
 
-            with open(f'{self.lib_path}/{lib_name}', 'rb') as f:
-                libs.append((lib_name, f.read()))
-            if "ld-linux" in lib_name:
-                ret, out = container.exec_run(
-                    f'patchelf --set-interpreter /challenge/lib/{lib_name} ' + self.bin_path,
-                    workdir=self.work_dir
-                )
-            else:
-                container.exec_run(
-                    f'patchelf --replace-needed {lib_name} /challenge/lib/{lib_name} ' + self.bin_path,
-                    workdir=self.work_dir
-                )
+                container.exec_run(f'chmod 0766 {self.lib_path}/{lib_name}')
+                container.exec_run(f'chown {os.getuid()}:{os.getgid()} {self.lib_path}/{lib_name}')
+
+                with open(f'{self.lib_path}/{lib_name}', 'rb') as f:
+                    libs.append((lib_name, f.read()))
+                if "ld-linux" in lib_name:
+                    ret, out = container.exec_run(
+                        f'patchelf --set-interpreter /challenge/lib/{lib_name} ' + self.bin_path,
+                        workdir=self.work_dir
+                    )
+                else:
+                    container.exec_run(
+                        f'patchelf --replace-needed {lib_name} /challenge/lib/{lib_name} ' + self.bin_path,
+                        workdir=self.work_dir
+                    )
 
         with open(f"{self.bin_path}", 'rb') as f:
             binary = f.read()

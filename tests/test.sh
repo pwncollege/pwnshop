@@ -16,11 +16,13 @@ pwnshop verify ShellExample
 cat /tmp/out | grep "SUCCEEDED: ShellExample"
 cat /tmp/out | grep "SUCCEEDED: ShellOptimized"
 cat /tmp/out | grep "FAILED: ShellBadVerifier"
+cat /tmp/out | grep "SUCCEEDED: Shell1604"
 
 ( pwnshop verify || true ) > /tmp/out
 cat /tmp/out | grep "SUCCEEDED: ShellExample"
 cat /tmp/out | grep "SUCCEEDED: ShellOptimized"
 cat /tmp/out | grep "FAILED: ShellBadVerifier"
+cat /tmp/out | grep "SUCCEEDED: Shell1604"
 
 pwnshop apply ../example_deploy/pwnshop.yml
 SOURCES=( ../example_deploy/*/*/*.c )
