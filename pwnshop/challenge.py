@@ -66,7 +66,7 @@ class Challenge:
     win_message = "You win! Here is your flag:"
     static_win_function_variables = True
 
-    build_image = None
+    BUILD_IMAGE = None
 
     context = {
         "min": min,
@@ -209,7 +209,7 @@ class Challenge:
 
         cmd = self.build_compiler_cmd()
 
-        if self.build_image is None:
+        if self.BUILD_IMAGE is None:
             cmd.append("-o")
             cmd.append(self.bin_path)
             subprocess.check_output(cmd, input=self.source.encode())
@@ -300,7 +300,7 @@ class Challenge:
         os.makedirs(f"{self.lib_path}", exist_ok=True)
 
         client = docker.from_env()
-        img, tag = self.build_image.split(':')
+        img, tag = self.BUILD_IMAGE.split(':')
         client.images.pull(img, tag=tag)
 
         #TODO: container life is context manager
@@ -405,7 +405,7 @@ class WindowsChallenge(Challenge, register=False):
 
         cmd = self.build_compiler_cmd()
 
-        if self.build_image is None:
+        if self.BUILD_IMAGE is None:
             with tempfile.TemporaryDirectory(prefix='pwnshop-') as workdir:
                 src_path = f"{workdir}/{self.__class__.__name__.lower()}.c"
 
