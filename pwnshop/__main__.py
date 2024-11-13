@@ -48,6 +48,14 @@ def with_challenges(f):
                 for c in pwnshop.ALL_CHALLENGES.values()
             ]
 
+        if getattr(args, "build_image", None):
+            for c in challenges:
+                c.BUILD_IMAGE = args.build_image
+
+        if getattr(args, "verify_image", None):
+            for c in challenges:
+                c.VERIFY_IMAGE = args.verify_image
+
         return f(args, challenges)
     return f_with_challenge
 
@@ -206,6 +214,11 @@ def main():
         help="Location to store needed library files",
     )
 
+    command_build.add_argument(
+        "--build-image",
+        help="Docker image to use for building",
+    )
+
     command_apply.add_argument(
         "--no-verify",
         action="store_true",
@@ -252,11 +265,21 @@ def main():
         action="append"
     )
 
+    command_verify.add_argument(
+        "--build-image",
+        help="Docker image to use for building",
+    )
+
+    command_verify.add_argument(
+        "--verify-image",
+        help="Docker image to use for verification",
+    )
+
 
     # where to write
     for c in [ command_render, command_build ]:
         c.add_argument(
-            "-O",
+            "-o",
             "--out",
             type=argparse.FileType('w'),
             default='-',
