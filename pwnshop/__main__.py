@@ -107,6 +107,7 @@ def verify_challenge(challenge, debug=False, flag=None, strace=False):
             f.write(flag.encode())
 
     try:
+        os.chdir(challenge.work_dir)
         return challenge.verify(strace=strace)
     except TypeError as e:
         if "strace" not in str(e):
@@ -171,27 +172,33 @@ def handle_apply(args):
                 basename=binary_name,
             )
 
-            if build_image:
-                challenge.BUILD_IMAGE = build_image
-            if verify_image:
-                challenge.VERIFY_IMAGE = verify_image
+            cur_dir = os.path.abspath(os.getcwd())
+            os.chdir(challenge.work_dir)
 
-            if args.no_render and not args.no_build:
-                challenge.source = open(challenge.src_path).read()
-            else:
-                challenge.render()
+            try:
+                if build_image:
+                    challenge.BUILD_IMAGE = build_image
+                if verify_image:
+                    challenge.VERIFY_IMAGE = verify_image
 
-            if args.no_build:
-                challenge.binary = open(challenge.bin_path, "rb").read()
-            else:
-                challenge.build()
+                if args.no_render and not args.no_build:
+                    challenge.source = open(challenge.src_path).read()
+                else:
+                    challenge.render()
 
-            if not args.no_verify:
-                challenge.verify()
-                print("... verification passed")
+                if args.no_build:
+                    challenge.binary = open(challenge.bin_path, "rb").read()
+                else:
+                    challenge.build()
 
-            if not keep_source and os.path.exists(challenge.src_path):
-                os.unlink(challenge.src_path)
+                if not args.no_verify:
+                    challenge.verify()
+                    print("... verification passed")
+
+                if not keep_source and os.path.exists(challenge.src_path):
+                    os.unlink(challenge.src_path)
+            finally:
+                os.chdir(cur_dir)
 
             #if pdb:
             #   with open(f"{args.out.name.replace('.exe', '.pdb')}", 'wb') as f:
