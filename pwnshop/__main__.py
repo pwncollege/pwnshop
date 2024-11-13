@@ -213,6 +213,8 @@ def handle_apply(args):
             if keep_source:
                 shutil.copy2(challenge.src_path, os.path.join(out_dir, os.path.basename(challenge.src_path)))
             shutil.copy2(challenge.bin_path, os.path.join(out_dir, os.path.basename(challenge.bin_path)))
+            if os.path.exists(challenge.lib_path):
+                shutil.copytree(challenge.lib_path, os.path.join(out_dir, os.path.basename(challenge.lib_path)), dirs_exist_ok=True)
 
             #if pdb:
             #   with open(f"{args.out.name.replace('.exe', '.pdb')}", 'wb') as f:
