@@ -168,16 +168,15 @@ def handle_apply(args):
             if args.challenges and c['id'] not in args.challenges and f"{c['id']}:{v}" not in args.challenges:
                 continue
 
-            out_dir = os.path.abspath(f"{os.path.dirname(args.yaml)}/{c['id']}/_{v}")
-            print(f"Applying {c['id']} variant {v} into {out_dir}.")
+            print(f"Applying {c['id']} variant {v}.")
 
             challenge = pwnshop.ALL_CHALLENGES[c['challenge']](
                 walkthrough=walkthrough,
                 seed=seed + v,
-                #work_dir=os.path.abspath(out_dir),
                 basename=binary_name,
             )
 
+            out_dir = os.path.abspath(f"{os.path.dirname(args.yaml)}/{c['id']}/_{v}")
             if os.path.exists(out_dir):
                 shutil.copytree(out_dir, challenge.work_dir, dirs_exist_ok=True)
             else:
