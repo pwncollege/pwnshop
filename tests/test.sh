@@ -2,7 +2,6 @@
 
 cd "$(dirname "${BASH_SOURCE[0]}")"/..
 
-echo "pwncollege{TESTING}" | sudo tee /flag
 cd example_module
 EXM=$PWD
 pwnshop list | grep ShellExample

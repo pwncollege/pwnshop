@@ -232,6 +232,7 @@ def main():
         "-f",
         "--flag",
         help="change the flag to be verified against",
+        default="pwn.college{TESTFLAG.ehCUlFggVqD8JsUQin.0V.TESTFLAG}"
     )
 
     command_verify.add_argument(
