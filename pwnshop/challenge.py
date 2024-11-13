@@ -215,6 +215,7 @@ class Challenge:
             self.render()
 
         cmd = self.build_compiler_cmd()
+        self._create_build_container()
 
         if self.BUILD_IMAGE is None:
             cmd.append("-o")
@@ -295,20 +296,9 @@ class Challenge:
             "description": inspect.cleandoc(self.__doc__) if self.__doc__ else ""
         }
 
-    def _containerized_build(self, cmd):
-        """
-        Spins up a docker container to build target, returns binary and linked libraries
-        """
-        cmd.append("-o")
-        cmd.append(self.bin_path)
-        cmd.append(self.src_path)
-        for lib in self.LINK_LIBRARIES:
-            cmd.append("-l" + lib)
-
-        if not self.source:
-            self.render()
-
-        os.makedirs(f"{self.lib_path}", exist_ok=True)
+    def _create_build_container(self):
+        if self._build_container or not self.BUILD_IMAGE:
+            return
 
         client = docker.from_env()
         img, tag = self.BUILD_IMAGE.split(':')
@@ -330,6 +320,21 @@ class Challenge:
             print("DEPENDENCY INSTALL ERROR:")
             print(out.decode('latin1'))
         assert ret == 0, out
+
+    def _containerized_build(self, cmd):
+        """
+        Spins up a docker container to build target, returns binary and linked libraries
+        """
+        cmd.append("-o")
+        cmd.append(self.bin_path)
+        cmd.append(self.src_path)
+        for lib in self.LINK_LIBRARIES:
+            cmd.append("-l" + lib)
+
+        if not self.source:
+            self.render()
+
+        os.makedirs(f"{self.lib_path}", exist_ok=True)
 
         ret, out = self._build_container.exec_run(cmd)
         #container.exec_run(f'chmod 0777 ' + bin_path)
