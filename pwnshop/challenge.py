@@ -217,22 +217,21 @@ class Challenge:
         cmd = self.build_compiler_cmd()
         self._create_build_container()
 
+        self.libraries = None
         if self.BUILD_IMAGE is None:
             subprocess.check_output(cmd)
-            with open(self.bin_path, 'rb') as f:
-                self.binary = f.read()
-                self.libraries = None
         else:
-            self.binary, self.libraries = self._containerized_build(cmd)
+            ret, out = self._build_container.exec_run(cmd)
+            if ret != 0:
+                print("BUILD ERROR:")
+                print(out.decode('latin1'))
+            assert ret == 0, out
 
-            # the interpreter is set to */challenge*/lib/ld-blah
-            if os.path.exists(self.DEPLOYMENT_LIB_PATH):
-                os.unlink(self.DEPLOYMENT_LIB_PATH)
-            if not os.path.exists(os.path.dirname(self.DEPLOYMENT_LIB_PATH)):
-                os.makedirs(os.path.dirname(self.DEPLOYMENT_LIB_PATH))
-            os.symlink(self.work_dir+"/lib", self.DEPLOYMENT_LIB_PATH)
+            self._build_container.exec_run(f'chown {os.getuid()}:{os.getgid()} {self.bin_path}')
+            self.libraries = self.pin_libraries() if self.PIN_LIBRARIES else []
 
-        os.chmod(self.bin_path, 0o4755)
+        with open(self.bin_path, 'rb') as f:
+            self.binary = f.read()
 
         return self.binary, self.libraries, None
 
@@ -319,25 +318,6 @@ class Challenge:
             print(out.decode('latin1'))
         assert ret == 0, out
 
-    def _containerized_build(self, cmd):
-        """
-        Spins up a docker container to build target, returns binary and linked libraries
-        """
-        ret, out = self._build_container.exec_run(cmd)
-        #container.exec_run(f'chmod 0777 ' + bin_path)
-        self._build_container.exec_run(f'chown {os.getuid()}:{os.getgid()} {self.bin_path}')
-        if ret != 0:
-            print("BUILD ERROR:")
-            print(out.decode('latin1'))
-        assert ret == 0, out
-
-        libs = self.pin_libraries() if self.PIN_LIBRARIES else []
-
-        with open(f"{self.bin_path}", 'rb') as f:
-            binary = f.read()
-
-        return binary, libs
-
     def pin_libraries(self):
         assert self._build_container
 
@@ -366,6 +346,13 @@ class Challenge:
                     f'patchelf --replace-needed {lib_name} {self.DEPLOYMENT_LIB_PATH}/{lib_name} ' + self.bin_path,
                     workdir=self.work_dir
                 )
+
+        # the interpreter is set to */challenge*/lib/ld-blah
+        if os.path.exists(self.DEPLOYMENT_LIB_PATH):
+            os.unlink(self.DEPLOYMENT_LIB_PATH)
+        if not os.path.exists(os.path.dirname(self.DEPLOYMENT_LIB_PATH)):
+            os.makedirs(os.path.dirname(self.DEPLOYMENT_LIB_PATH))
+        os.symlink(self.work_dir+"/lib", self.DEPLOYMENT_LIB_PATH)
 
         return libs
 
