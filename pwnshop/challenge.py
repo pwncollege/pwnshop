@@ -310,7 +310,10 @@ class Challenge:
             return None
 
         client = docker.from_env()
-        img, tag = image.split(':')
+        if ":" in image:
+            img, tag = image.split(':')
+        else:
+            img, tag = image, "latest"
         client.images.pull(img, tag=tag)
 
         #TODO: container life is context manager
