@@ -260,7 +260,7 @@ class Challenge:
         if self._verify_container:
             ret, _ = self._verify_container.exec_run(f"""/bin/bash -c 'echo -n "{self.flag.decode()}" | tee /flag'""", user="root")
             assert ret == 0
-            _, out = self._verify_container.exec_run(f"cat /flag", user="root")
+            _, out = self._verify_container.exec_run("cat /flag", user="root")
             assert out == self.flag
         else:
             with open("/flag", "rb") as f:
