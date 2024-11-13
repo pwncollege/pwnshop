@@ -28,9 +28,11 @@ pwnshop apply ../example_deploy/pwnshop.yml
 SOURCES=( ../example_deploy/*/*/*.c )
 BINS=( ../example_deploy/*/*/shell )
 FILES=( ../example_deploy/*/*/* )
+LIBS=( ../example_deploy/*/*/lib/* )
 [ "${#SOURCES[@]}" -eq 1 ] || exit 1
-[ "${#BINS[@]}" -eq 5 ] || exit 1
-[ "${#FILES[@]}" -eq 6 ] || exit 1
+[ "${#BINS[@]}" -eq 7 ] || exit 1
+[ "${#FILES[@]}" -eq 10 ] || exit 1
+[ "${#LIBS[@]}" -eq 6 ] || exit 1
 
 cd /
 pwnshop -C $EXM render ShellExample
