@@ -153,6 +153,8 @@ def handle_apply(args):
         walkthrough = c.get('walkthrough', y.get('walkthrough', args.walkthrough))
         keep_source = c.get('keep_source', y.get('keep_source', False))
         binary_name = c.get('binary_name', y.get('binary_name', c['id']))
+        build_image = c.get('build_image', y.get('build_image', None))
+        verify_image = c.get('verify_image', y.get('verify_image', None))
 
         for v in range(variants):
             out_dir = f"{os.path.dirname(args.yaml)}/{c['id']}/_{v}"
@@ -165,6 +167,11 @@ def handle_apply(args):
                 work_dir=os.path.abspath(out_dir),
                 basename=binary_name,
             )
+
+            if build_image:
+                challenge.BUILD_IMAGE = build_image
+            if verify_image:
+                challenge.VERIFY_IMAGE = verify_image
 
             if args.no_render and not args.no_build:
                 challenge.source = open(challenge.src_path).read()

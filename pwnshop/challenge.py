@@ -260,11 +260,10 @@ class Challenge:
             self.run_sh(f"ln -s /flag {flag_symlink}")
 
         if self._verify_container:
-            p = self.run_sh(f"tee /flag")
-            p.send(self.flag)
-            p.stdin.close()
-            assert p.proc.wait() == 0
-            assert self.run_sh("cat /flag").readall() == self.flag
+            ret, _ = self._verify_container.exec_run(f"""/bin/bash -c 'echo -n "{self.flag.decode()}" | tee /flag'""", user="root")
+            assert ret == 0
+            _, out = self._verify_container.exec_run(f"cat /flag", user="root")
+            assert out == self.flag
         else:
             with open("/flag", "rb") as f:
                 assert f.read() == self.flag
@@ -319,13 +318,14 @@ class Challenge:
 
         requirements = [ "gcc", "patchelf" ] + self.APT_DEPENDENCIES
         _, out = container.exec_run(
-            f"""/bin/bash -c 'dpkg -l | cut -f3 -d" " | grep -E "^({ "|".join(requirements) })$"'"""
+            f"""/bin/bash -c 'dpkg -l | cut -f3 -d" " | grep -E "^({ "|".join(requirements) })$"'""",
+            user="root"
         )
 
         missing = set(requirements) - set(out.decode().strip().split("\n"))
 
         if missing:
-            ret, out = container.exec_run(f'/bin/bash -c "apt-get update && apt-get install -y {" ".join(missing)}"')
+            ret, out = container.exec_run(f'/bin/bash -c "apt-get update && apt-get install -y {" ".join(missing)}"', user="root")
             if ret != 0:
                 print("DEPENDENCY INSTALL ERROR:")
                 print(out.decode('latin1'))
