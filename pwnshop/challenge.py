@@ -62,6 +62,7 @@ class Challenge:
     BUILD_DEPENDENCIES = []
     LINK_LIBRARIES = []
     PIN_LIBRARIES = False
+    DEPLOYMENT_LIB_PATH = "/challenge/lib"
 
 
     vbuf_in_main = True
@@ -223,9 +224,11 @@ class Challenge:
             self.binary, self.libraries = self._containerized_build(cmd)
 
             # the interpreter is set to */challenge*/lib/ld-blah
-            if os.path.exists("/challenge"):
-                os.unlink("/challenge")
-            os.symlink(self.work_dir, "/challenge")
+            if os.path.exists(self.DEPLOYMENT_LIB_PATH):
+                os.unlink(self.DEPLOYMENT_LIB_PATH)
+            if not os.path.exists(os.path.dirname(self.DEPLOYMENT_LIB_PATH)):
+                os.makedirs(os.path.dirname(self.DEPLOYMENT_LIB_PATH))
+            os.symlink(self.work_dir+"/lib", self.DEPLOYMENT_LIB_PATH)
 
         os.chmod(self.bin_path, 0o4755)
 
@@ -330,36 +333,40 @@ class Challenge:
             print(out.decode('latin1'))
         assert ret == 0, out
 
-        libs = []
-        if self.PIN_LIBRARIES:
-            ret, out = container.exec_run("ldd " + self.bin_path)
-            assert ret == 0
-            lib_paths = filter(lambda x: '/' in x, out.decode().split())
-
-            for p in lib_paths:
-                lib_name = os.path.basename(p)
-                container.exec_run(f'cp {p} {self.lib_path}/{lib_name}')
-
-                container.exec_run(f'chmod 0766 {self.lib_path}/{lib_name}')
-                container.exec_run(f'chown {os.getuid()}:{os.getgid()} {self.lib_path}/{lib_name}')
-
-                with open(f'{self.lib_path}/{lib_name}', 'rb') as f:
-                    libs.append((lib_name, f.read()))
-                if "ld-linux" in lib_name:
-                    ret, out = container.exec_run(
-                        f'patchelf --set-interpreter /challenge/lib/{lib_name} ' + self.bin_path,
-                        workdir=self.work_dir
-                    )
-                else:
-                    container.exec_run(
-                        f'patchelf --replace-needed {lib_name} /challenge/lib/{lib_name} ' + self.bin_path,
-                        workdir=self.work_dir
-                    )
+        libs = self.pin_libraries(container) if self.PIN_LIBRARIES else []
 
         with open(f"{self.bin_path}", 'rb') as f:
             binary = f.read()
 
         return binary, libs
+
+    def pin_libraries(self, container):
+        ret, out = container.exec_run("ldd " + self.bin_path)
+        assert ret == 0
+        lib_paths = filter(lambda x: '/' in x, out.decode().split())
+
+        libs = [ ]
+        for p in lib_paths:
+            lib_name = os.path.basename(p)
+            container.exec_run(f'cp {p} {self.lib_path}/{lib_name}')
+
+            container.exec_run(f'chmod 0766 {self.lib_path}/{lib_name}')
+            container.exec_run(f'chown {os.getuid()}:{os.getgid()} {self.lib_path}/{lib_name}')
+
+            with open(f'{self.lib_path}/{lib_name}', 'rb') as f:
+                libs.append((lib_name, f.read()))
+            if self.DEPLOYMENT_LIB_PATH and "ld-linux" in lib_name:
+                ret, out = container.exec_run(
+                    f'patchelf --set-interpreter {self.DEPLOYMENT_LIB_PATH}/{lib_name} ' + self.bin_path,
+                    workdir=self.work_dir
+                )
+            elif self.DEPLOYMENT_LIB_PATH:
+                container.exec_run(
+                    f'patchelf --replace-needed {lib_name} {self.DEPLOYMENT_LIB_PATH}/{lib_name} ' + self.bin_path,
+                    workdir=self.work_dir
+                )
+
+        return libs
 
 class WindowsChallenge(Challenge, register=False):
     COMPILER = "cl"
