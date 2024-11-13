@@ -226,9 +226,6 @@ class Challenge:
                 print("BUILD ERROR:")
                 print(out.decode('latin1'))
             assert ret == 0, out
-
-            self._build_container.exec_run(f'chown 0:0 {self.bin_path}', user="root")
-            self._build_container.exec_run(f'chmod 4755 {self.bin_path}', user="root")
             self.libraries = self.pin_libraries() if self.PIN_LIBRARIES else []
         else:
             self.libraries = None
