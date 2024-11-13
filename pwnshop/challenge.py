@@ -283,7 +283,12 @@ class Challenge:
             self.build()
 
         if self._verify_container:
-            argv = f"docker exec -i {self._verify_container.name}".split() + argv
+            docker_cmd = "docker exec -u root -i".split()
+            for k,v in kwargs.get("env", {}).items():
+                docker_cmd += [ "-e", f"{k}={v.decode() if type(v) is bytes else v}" ]
+            kwargs.pop("env", None)
+            docker_cmd.append(self._verify_container.name)
+            argv = docker_cmd + argv
 
         with pwnlib.tubes.process.process(
             argv, **kwargs
