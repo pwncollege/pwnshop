@@ -220,7 +220,6 @@ class Challenge:
 
         cmd = self.build_compiler_cmd()
 
-        self.libraries = None
         if self._build_container:
             ret, out = self._build_container.exec_run(cmd)
             if ret != 0:
@@ -231,6 +230,7 @@ class Challenge:
             self._build_container.exec_run(f'chown {os.getuid()}:{os.getgid()} {self.bin_path}')
             self.libraries = self.pin_libraries() if self.PIN_LIBRARIES else []
         else:
+            self.libraries = None
             subprocess.check_output(cmd)
 
         with open(self.bin_path, 'rb') as f:
@@ -253,12 +253,21 @@ class Challenge:
         strace=False,
         **kwargs,
     ):
-        environment_ctx = None
-        if flag_symlink:
-            os.symlink("/flag", f"{flag_symlink}")
+        if not self._verify_container:
+            self._verify_container = self._create_container(self.VERIFY_IMAGE)
 
-        with open("/flag", "rb") as f:
-            assert f.read() == self.flag
+        if flag_symlink:
+            self.run_sh(f"ln -s /flag {flag_symlink}")
+
+        if self._verify_container:
+            p = self.run_sh(f"tee /flag")
+            p.send(self.flag)
+            p.stdin.close()
+            assert p.proc.wait() == 0
+            assert self.run_sh("cat /flag").readall() == self.flag
+        else:
+            with open("/flag", "rb") as f:
+                assert f.read() == self.flag
 
         if argv is None:
             argv = [self.bin_path]
@@ -273,18 +282,22 @@ class Challenge:
         if not self.binary:
             self.build()
 
+        if self._verify_container:
+            argv = f"docker exec -i {self._verify_container.name}".split() + argv
+
         with pwnlib.tubes.process.process(
             argv, **kwargs
         ) as process:
             if close_stdin:
                 process.stdin.close()
-            try:
-                yield process
-            finally:
-                if environment_ctx:
-                    environment_ctx.__exit__(*sys.exc_info())
+            yield process
 
     def run_sh(self, command, **kwargs):
+        if not self._verify_container:
+            self._verify_container = self._create_container(self.VERIFY_IMAGE)
+        if self._verify_container:
+            command = f"docker exec -i {self._verify_container.name} {command}"
+
         return pwnlib.tubes.process.process(command, shell=True, **kwargs)
 
     def _create_container(self, image=None):
@@ -304,7 +317,7 @@ class Challenge:
             volumes = {self.work_dir : {'bind': self.work_dir, 'mode': 'rw'}}
         )
         ret, out = container.exec_run(
-            f'/bin/bash -c "apt-get update && apt-get install -y gcc patchelf {" ".join(self.APT_DEPENDENCIES)} && mkdir -p /tmp/pwnshop"'
+            f'/bin/bash -c "apt-get update && apt-get install -y gcc patchelf {" ".join(self.APT_DEPENDENCIES)}"'
         )
 
         if ret != 0:

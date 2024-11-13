@@ -1,14 +1,18 @@
 import traceback
 import functools
 import argparse
+import logging
 import pwnshop
 import pwnlib.context
+import pwnlib.log
 import signal
 import random
 import yaml
 import glob
 import sys
 import os
+
+pwnlib.log.install_default_handler()
 
 def challenge_class(challenge):
     if ":" not in challenge:

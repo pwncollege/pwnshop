@@ -11,17 +11,12 @@ file /tmp/shell_example | grep ELF
 strings <(pwnshop build ShellOptimized) | grep -- "-O3"
 pwnshop verify ShellExample
 
-( pwnshop verify -m example_module || true ) | tee /tmp/out
-cat /tmp/out | grep "SUCCEEDED: ShellExample"
-cat /tmp/out | grep "SUCCEEDED: ShellOptimized"
-cat /tmp/out | grep "FAILED: ShellBadVerifier"
-cat /tmp/out | grep "SUCCEEDED: Shell1604"
-
 ( pwnshop verify || true ) | tee /tmp/out
 cat /tmp/out | grep "SUCCEEDED: ShellExample"
 cat /tmp/out | grep "SUCCEEDED: ShellOptimized"
 cat /tmp/out | grep "FAILED: ShellBadVerifier"
 cat /tmp/out | grep "SUCCEEDED: Shell1604"
+cat /tmp/out | grep "SUCCEEDED: Shell1604InVitu"
 
 pwnshop apply ../example_deploy/pwnshop.yml
 SOURCES=( ../example_deploy/*/*/*.c )

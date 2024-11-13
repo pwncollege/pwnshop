@@ -38,6 +38,7 @@ class ShellExample(ShellBase):
             shellcode = pwnlib.asm.asm(
                 pwnlib.shellcraft.open("/flag") + pwnlib.shellcraft.sendfile(1, 3, 0, 1024) + pwnlib.shellcraft.exit(0)
             )
+            process.clean()
             process.write(shellcode)
             assert self.flag in process.readall()
 
@@ -61,6 +62,15 @@ class Shell1604(ShellExample):
     The same example, built using Ubuntu 16.04.
     """
 
-    BUILD_IMAGE = "pwncollege/pwnshop-builder:ubuntu1604"
+    BUILD_IMAGE = "ubuntu:16.04"
     APT_DEPENDENCIES = [ "libcapstone-dev" ]
     PIN_LIBRARIES = True
+
+class Shell1604InVitu(ShellExample):
+    """
+    The same example, built using Ubuntu 16.04 and verified in the same container, without the need for library pinning.
+    """
+
+    BUILD_IMAGE = "ubuntu:16.04"
+    VERIFY_IMAGE = "ubuntu:16.04"
+    APT_DEPENDENCIES = [ "libcapstone-dev" ]
