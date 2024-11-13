@@ -160,7 +160,13 @@ def handle_apply(args):
         build_image = c.get('build_image', y.get('build_image', None))
         verify_image = c.get('verify_image', y.get('verify_image', None))
 
+        if args.challenges and c['id'] not in args.challenges and not any(cc.startswith(c['id']+":") for cc in args.challenges):
+            continue
+
         for v in range(variants):
+            if args.challenges and c['id'] not in args.challenges and f"{c['id']}:{v}" not in args.challenges:
+                continue
+
             out_dir = f"{os.path.dirname(args.yaml)}/{c['id']}/_{v}"
             print(f"Building {c['id']} variant {v} into {out_dir}.")
             os.makedirs(out_dir, exist_ok=True)
@@ -328,7 +334,7 @@ def main():
         )
 
     # common to all single-challenge commands
-    for subparser in [ command_render, command_build, command_verify ]:
+    for subparser in [ command_render, command_build, command_verify, command_apply ]:
         subparser.add_argument("challenges", help="the challenges, as multiple ChallengeClassName or ModuleName:level_number. Default: all challenges.", nargs="*")
 
     parser.epilog = f"""Commands usage:\n\t{command_render.format_usage()}\t{command_build.format_usage()}\t{command_verify.format_usage()}"""
