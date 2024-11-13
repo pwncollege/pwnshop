@@ -228,8 +228,8 @@ class Challenge:
             assert ret == 0, out
             self.libraries = self.pin_libraries() if self.PIN_LIBRARIES else []
         else:
-            self.libraries = None
             subprocess.check_output(cmd)
+            self.libraries = None
 
         with open(self.bin_path, 'rb') as f:
             self.binary = f.read()
