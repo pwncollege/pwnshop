@@ -151,6 +151,7 @@ def handle_apply(args):
     if args.debug:
         pwnlib.context.context.log_level = "DEBUG"
 
+    yaml_dir = os.path.abspath(os.path.dirname(args.yaml))
     y = yaml.safe_load(open(args.yaml))
     for c in y['challenges']:
         seed = c.get('seed', y.get('seed', args.seed))
@@ -176,7 +177,7 @@ def handle_apply(args):
                 basename=binary_name,
             )
 
-            out_dir = os.path.abspath(f"{os.path.dirname(args.yaml)}/{c['id']}/_{v}")
+            out_dir = f"{yaml_dir}/{c['id']}/_{v}"
             if os.path.exists(out_dir):
                 shutil.copytree(out_dir, challenge.work_dir, dirs_exist_ok=True)
             else:
