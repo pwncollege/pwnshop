@@ -146,6 +146,9 @@ def handle_verify(args, challenges):
     return verify_many(args, challenges)
 
 def handle_apply(args):
+    if args.debug:
+        pwnlib.context.context.log_level = "DEBUG"
+
     y = yaml.safe_load(open(args.yaml))
     for c in y['challenges']:
         seed = c.get('seed', y.get('seed', args.seed))
