@@ -284,15 +284,6 @@ class Challenge:
     def run_sh(self, command, **kwargs):
         return pwnlib.tubes.process.process(command, shell=True, **kwargs)
 
-    def metadata(self):
-        """
-        Returns a dictionary to be yaml'ed for the dojo.
-        """
-        return {
-            "class_name": self.__class__.__name__,
-            "description": inspect.cleandoc(self.__doc__) if self.__doc__ else ""
-        }
-
     def _create_build_container(self):
         if self._build_container or not self.BUILD_IMAGE:
             return
