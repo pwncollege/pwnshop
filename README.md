@@ -40,4 +40,3 @@ Check out `example_module` for an example challenge.
 
 1. Write some templates.
 2. Write some Python.
-3. `pwnshop.register_challenge`
