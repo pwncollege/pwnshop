@@ -60,10 +60,11 @@ class Challenge:
     DEBUG_SYMBOLS = False
 
     BUILD_IMAGE = None
-    BUILD_DEPENDENCIES = []
+    APT_DEPENDENCIES = []
     LINK_LIBRARIES = []
     PIN_LIBRARIES = False
     DEPLOYMENT_LIB_PATH = "/challenge/lib"
+    VERIFY_IMAGE = None
 
 
     vbuf_in_main = True
@@ -214,14 +215,13 @@ class Challenge:
     def build(self):
         if not self.source:
             self.render()
+        if not self._build_container:
+            self._build_container = self._create_container(self.BUILD_IMAGE)
 
         cmd = self.build_compiler_cmd()
-        self._create_build_container()
 
         self.libraries = None
-        if self.BUILD_IMAGE is None:
-            subprocess.check_output(cmd)
-        else:
+        if self._build_container:
             ret, out = self._build_container.exec_run(cmd)
             if ret != 0:
                 print("BUILD ERROR:")
@@ -230,6 +230,8 @@ class Challenge:
 
             self._build_container.exec_run(f'chown {os.getuid()}:{os.getgid()} {self.bin_path}')
             self.libraries = self.pin_libraries() if self.PIN_LIBRARIES else []
+        else:
+            subprocess.check_output(cmd)
 
         with open(self.bin_path, 'rb') as f:
             self.binary = f.read()
@@ -285,30 +287,32 @@ class Challenge:
     def run_sh(self, command, **kwargs):
         return pwnlib.tubes.process.process(command, shell=True, **kwargs)
 
-    def _create_build_container(self):
-        if self._build_container or not self.BUILD_IMAGE:
-            return
+    def _create_container(self, image=None):
+        if not image:
+            return None
 
         client = docker.from_env()
-        img, tag = self.BUILD_IMAGE.split(':')
+        img, tag = image.split(':')
         client.images.pull(img, tag=tag)
 
         #TODO: container life is context manager
-        self._build_container = client.containers.run(
+        container = client.containers.run(
             img + ':' + tag,
             'sleep 300',
             auto_remove=True,
             detach=True,
             volumes = {self.work_dir : {'bind': self.work_dir, 'mode': 'rw'}}
         )
-        ret, out = self._build_container.exec_run(
-            f'/bin/bash -c "apt-get update && apt-get install -y gcc patchelf {" ".join(self.BUILD_DEPENDENCIES)} && mkdir -p /tmp/pwnshop"'
+        ret, out = container.exec_run(
+            f'/bin/bash -c "apt-get update && apt-get install -y gcc patchelf {" ".join(self.APT_DEPENDENCIES)} && mkdir -p /tmp/pwnshop"'
         )
 
         if ret != 0:
             print("DEPENDENCY INSTALL ERROR:")
             print(out.decode('latin1'))
         assert ret == 0, out
+
+        return container
 
     def pin_libraries(self):
         assert self._build_container
