@@ -227,7 +227,8 @@ class Challenge:
                 print(out.decode('latin1'))
             assert ret == 0, out
 
-            self._build_container.exec_run(f'chown {os.getuid()}:{os.getgid()} {self.bin_path}')
+            self._build_container.exec_run(f'chown 0:0 {self.bin_path}', user="root")
+            self._build_container.exec_run(f'chmod 4755 {self.bin_path}', user="root")
             self.libraries = self.pin_libraries() if self.PIN_LIBRARIES else []
         else:
             self.libraries = None
@@ -313,7 +314,7 @@ class Challenge:
             'sleep 300',
             auto_remove=True,
             detach=True,
-            volumes = {self.work_dir : {'bind': self.work_dir, 'mode': 'rw'}}
+            volumes = {"/tmp": {"bind": "/tmp", "mode": "ro"}, self.work_dir : {'bind': self.work_dir, 'mode': 'rw'}}
         )
 
         requirements = [ "gcc", "patchelf" ] + self.APT_DEPENDENCIES
