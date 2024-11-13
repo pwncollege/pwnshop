@@ -315,7 +315,7 @@ class Challenge:
             detach=True,
             volumes = {self.work_dir : {'bind': self.work_dir, 'mode': 'rw'}}
         )
-        ret, out = container.exec_run(f'/bin/bash -c "apt update && apt install -y gcc patchelf {self.BUILD_DEPENDENCIES} && mkdir -p /tmp/pwnshop"')
+        ret, out = container.exec_run(f'/bin/bash -c "apt-get update && apt-get install -y gcc patchelf {self.BUILD_DEPENDENCIES} && mkdir -p /tmp/pwnshop"')
         if ret != 0:
             print("DEPENDENCY INSTALL ERROR:")
             print(out.decode('latin1'))
