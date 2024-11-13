@@ -2,12 +2,12 @@ import traceback
 import functools
 import argparse
 import pwnshop
+import pwnlib.context
 import signal
 import random
 import yaml
 import glob
 import sys
-import pwn #pylint:disable=import-error
 import os
 
 def challenge_class(challenge):
@@ -88,7 +88,7 @@ def raise_timeout(signum, stack):
 
 def verify_challenge(challenge, debug=False, flag=None, strace=False):
     if debug:
-        pwn.context.log_level = "DEBUG"
+        pwnlib.context.context.log_level = "DEBUG"
 
     if flag:
         with open("/flag", "wb") as f:
@@ -289,7 +289,7 @@ def main():
     parser.epilog = f"""Commands usage:\n\t{command_render.format_usage()}\t{command_build.format_usage()}\t{command_verify.format_usage()}"""
 
     args = parser.parse_args()
-    pwn.context.log_level = "ERROR"
+    pwnlib.context.context.log_level = "ERROR"
 
     import_dir = args.challenge_location
     if not os.path.isdir(import_dir):

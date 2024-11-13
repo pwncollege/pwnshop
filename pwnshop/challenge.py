@@ -14,13 +14,13 @@ import traceback
 
 import docker
 import pyastyle
-import pwn
+import pwnlib.context, pwnlib.tubes
 from jinja2 import Environment, PackageLoader, ChoiceLoader, contextfilter
 
 from .register import register_challenge
 
-pwn.context.arch = "x86_64"
-pwn.context.encoding = "latin"
+pwnlib.context.context.arch = "x86_64"
+pwnlib.context.context.encoding = "latin"
 
 _LOG = logging.getLogger(__name__)
 
@@ -265,7 +265,7 @@ class Challenge:
         if not self.binary:
             self.build()
 
-        with pwn.process(
+        with pwnlib.tubes.process.process(
             argv, **kwargs
         ) as process:
             if close_stdin:
@@ -277,7 +277,7 @@ class Challenge:
                     environment_ctx.__exit__(*sys.exc_info())
 
     def run_sh(self, command, **kwargs):
-        return pwn.process(command, shell=True, **kwargs)
+        return pwnlib.tubes.process.process(command, shell=True, **kwargs)
 
     def metadata(self):
         """
@@ -498,7 +498,7 @@ class KernelChallenge(Challenge, register=False):
         yield
 
     def run_sh(self, command, **kwargs):
-        return pwn.process(["vm", "exec", command], **kwargs)
+        return pwnlib.tubes.process.process(["vm", "exec", command], **kwargs)
 
     def run_c(self, src, *, user=None, flags=()):
         with open("/tmp/program.c", "w") as f:

