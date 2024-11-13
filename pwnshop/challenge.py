@@ -316,14 +316,20 @@ class Challenge:
             detach=True,
             volumes = {self.work_dir : {'bind': self.work_dir, 'mode': 'rw'}}
         )
-        ret, out = container.exec_run(
-            f'/bin/bash -c "apt-get update && apt-get install -y gcc patchelf {" ".join(self.APT_DEPENDENCIES)}"'
+
+        requirements = [ "gcc", "patchelf" ] + self.APT_DEPENDENCIES
+        _, out = container.exec_run(
+            f"""/bin/bash -c 'dpkg -l | cut -f3 -d" " | grep -E "^({ "|".join(requirements) })$"'"""
         )
 
-        if ret != 0:
-            print("DEPENDENCY INSTALL ERROR:")
-            print(out.decode('latin1'))
-        assert ret == 0, out
+        missing = set(requirements) - set(out.decode().strip().split("\n"))
+
+        if missing:
+            ret, out = container.exec_run(f'/bin/bash -c "apt-get update && apt-get install -y {" ".join(missing)}"')
+            if ret != 0:
+                print("DEPENDENCY INSTALL ERROR:")
+                print(out.decode('latin1'))
+            assert ret == 0, out
 
         return container
 
