@@ -200,13 +200,13 @@ class Challenge:
 
         cmd.append("-w")
 
-        cmd.append("-x")
-        cmd.append("c")
-
-        cmd.append("-")
+        cmd.append(self.src_path)
 
         for lib in self.LINK_LIBRARIES:
             cmd.append("-l" + lib)
+
+        cmd.append("-o")
+        cmd.append(self.bin_path)
 
         return cmd
 
@@ -218,9 +218,7 @@ class Challenge:
         self._create_build_container()
 
         if self.BUILD_IMAGE is None:
-            cmd.append("-o")
-            cmd.append(self.bin_path)
-            subprocess.check_output(cmd, input=self.source.encode())
+            subprocess.check_output(cmd)
             with open(self.bin_path, 'rb') as f:
                 self.binary = f.read()
                 self.libraries = None
@@ -325,17 +323,6 @@ class Challenge:
         """
         Spins up a docker container to build target, returns binary and linked libraries
         """
-        cmd.append("-o")
-        cmd.append(self.bin_path)
-        cmd.append(self.src_path)
-        for lib in self.LINK_LIBRARIES:
-            cmd.append("-l" + lib)
-
-        if not self.source:
-            self.render()
-
-        os.makedirs(f"{self.lib_path}", exist_ok=True)
-
         ret, out = self._build_container.exec_run(cmd)
         #container.exec_run(f'chmod 0777 ' + bin_path)
         self._build_container.exec_run(f'chown {os.getuid()}:{os.getgid()} {self.bin_path}')
@@ -359,6 +346,7 @@ class Challenge:
         lib_paths = filter(lambda x: '/' in x, out.decode().split())
 
         libs = [ ]
+        os.makedirs(f"{self.lib_path}", exist_ok=True)
         for p in lib_paths:
             lib_name = os.path.basename(p)
             self._build_container.exec_run(f'cp {p} {self.lib_path}/{lib_name}')
