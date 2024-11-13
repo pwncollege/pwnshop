@@ -62,5 +62,5 @@ class Shell1604(ShellExample):
     """
 
     BUILD_IMAGE = "pwncollege/pwnshop-builder:ubuntu1604"
-    BUILD_DEPENDENCIES = "libcapstone-dev"
+    BUILD_DEPENDENCIES = [ "libcapstone-dev" ]
     PIN_LIBRARIES = True

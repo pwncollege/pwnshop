@@ -57,9 +57,10 @@ class Challenge:
     EXEC_STACK = False
     STRIP = False
     DEBUG_SYMBOLS = False
-    LINK_LIBRARIES = []
+
     BUILD_IMAGE = None
-    BUILD_DEPENDENCIES = ""
+    BUILD_DEPENDENCIES = []
+    LINK_LIBRARIES = []
     PIN_LIBRARIES = False
 
 
@@ -315,7 +316,7 @@ class Challenge:
             detach=True,
             volumes = {self.work_dir : {'bind': self.work_dir, 'mode': 'rw'}}
         )
-        ret, out = container.exec_run(f'/bin/bash -c "apt-get update && apt-get install -y gcc patchelf {self.BUILD_DEPENDENCIES} && mkdir -p /tmp/pwnshop"')
+        ret, out = container.exec_run(f'/bin/bash -c "apt-get update && apt-get install -y gcc patchelf {" ".join(self.BUILD_DEPENDENCIES)} && mkdir -p /tmp/pwnshop"')
         if ret != 0:
             print("DEPENDENCY INSTALL ERROR:")
             print(out.decode('latin1'))
