@@ -91,6 +91,9 @@ class Challenge:
         self.libraries = None
         self.set_paths(work_dir=work_dir, basename=basename, src_extension=src_extension or "", bin_extension=bin_extension or "")
 
+        self._build_container = None
+        self._verify_container = None
+
     def set_paths(self, work_dir=None, basename=None, src_extension="", bin_extension=""):
         self.work_dir = tempfile.mkdtemp(prefix='pwnshop-') if work_dir is None else work_dir
         os.makedirs(self.work_dir, exist_ok=True)
@@ -312,56 +315,61 @@ class Challenge:
         client.images.pull(img, tag=tag)
 
         #TODO: container life is context manager
-        container = client.containers.run(
+        self._build_container = client.containers.run(
             img + ':' + tag,
             'sleep 300',
             auto_remove=True,
             detach=True,
             volumes = {self.work_dir : {'bind': self.work_dir, 'mode': 'rw'}}
         )
-        ret, out = container.exec_run(f'/bin/bash -c "apt-get update && apt-get install -y gcc patchelf {" ".join(self.BUILD_DEPENDENCIES)} && mkdir -p /tmp/pwnshop"')
+        ret, out = self._build_container.exec_run(
+            f'/bin/bash -c "apt-get update && apt-get install -y gcc patchelf {" ".join(self.BUILD_DEPENDENCIES)} && mkdir -p /tmp/pwnshop"'
+        )
+
         if ret != 0:
             print("DEPENDENCY INSTALL ERROR:")
             print(out.decode('latin1'))
         assert ret == 0, out
 
-        ret, out = container.exec_run(cmd)
+        ret, out = self._build_container.exec_run(cmd)
         #container.exec_run(f'chmod 0777 ' + bin_path)
-        container.exec_run(f'chown {os.getuid()}:{os.getgid()} {self.bin_path}')
+        self._build_container.exec_run(f'chown {os.getuid()}:{os.getgid()} {self.bin_path}')
         if ret != 0:
             print("BUILD ERROR:")
             print(out.decode('latin1'))
         assert ret == 0, out
 
-        libs = self.pin_libraries(container) if self.PIN_LIBRARIES else []
+        libs = self.pin_libraries() if self.PIN_LIBRARIES else []
 
         with open(f"{self.bin_path}", 'rb') as f:
             binary = f.read()
 
         return binary, libs
 
-    def pin_libraries(self, container):
-        ret, out = container.exec_run("ldd " + self.bin_path)
+    def pin_libraries(self):
+        assert self._build_container
+
+        ret, out = self._build_container.exec_run("ldd " + self.bin_path)
         assert ret == 0
         lib_paths = filter(lambda x: '/' in x, out.decode().split())
 
         libs = [ ]
         for p in lib_paths:
             lib_name = os.path.basename(p)
-            container.exec_run(f'cp {p} {self.lib_path}/{lib_name}')
+            self._build_container.exec_run(f'cp {p} {self.lib_path}/{lib_name}')
 
-            container.exec_run(f'chmod 0766 {self.lib_path}/{lib_name}')
-            container.exec_run(f'chown {os.getuid()}:{os.getgid()} {self.lib_path}/{lib_name}')
+            self._build_container.exec_run(f'chmod 0766 {self.lib_path}/{lib_name}')
+            self._build_container.exec_run(f'chown {os.getuid()}:{os.getgid()} {self.lib_path}/{lib_name}')
 
             with open(f'{self.lib_path}/{lib_name}', 'rb') as f:
                 libs.append((lib_name, f.read()))
             if self.DEPLOYMENT_LIB_PATH and "ld-linux" in lib_name:
-                ret, out = container.exec_run(
+                ret, out = self._build_container.exec_run(
                     f'patchelf --set-interpreter {self.DEPLOYMENT_LIB_PATH}/{lib_name} ' + self.bin_path,
                     workdir=self.work_dir
                 )
             elif self.DEPLOYMENT_LIB_PATH:
-                container.exec_run(
+                self._build_container.exec_run(
                     f'patchelf --replace-needed {lib_name} {self.DEPLOYMENT_LIB_PATH}/{lib_name} ' + self.bin_path,
                     workdir=self.work_dir
                 )
