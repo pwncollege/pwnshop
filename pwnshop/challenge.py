@@ -293,7 +293,17 @@ class Challenge:
         ) as process:
             if close_stdin:
                 process.stdin.close()
-            yield process
+            try:
+                yield process
+            finally:
+                if self._verify_container:
+                    self._verify_container.exec_run(f'chown {os.getuid()}:{os.getgid()} {self.work_dir}/core', user="root")
+
+    @property
+    def hostname(self):
+        if not self._verify_container:
+            self._verify_container = self._create_container(self.VERIFY_IMAGE)
+        return "localhost" if not self._verify_container else self._verify_container.attrs['NetworkSettings']['IPAddress']
 
     def run_sh(self, command, **kwargs):
         if not self._verify_container:
@@ -320,6 +330,8 @@ class Challenge:
             'sleep 300',
             auto_remove=True,
             detach=True,
+            network_mode="bridge",
+            ulimits = [ docker.types.Ulimit(name='core', soft=-1, hard=-1) ],
             volumes = {"/tmp": {"bind": "/tmp", "mode": "rw"}, self.work_dir : {'bind': self.work_dir, 'mode': 'rw'}}
         )
 
@@ -338,6 +350,7 @@ class Challenge:
                 print(out.decode('latin1'))
             assert ret == 0, out
 
+        container.reload()
         return container
 
     def pin_libraries(self):
