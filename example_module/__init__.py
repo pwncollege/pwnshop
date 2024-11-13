@@ -61,6 +61,6 @@ class Shell1604(ShellExample):
     The same example, built using 16.04.
     """
 
-    BUILD_IMAGE = "ubuntu:16.04"
+    BUILD_IMAGE = "pwncollege/pwnshop-builder:ubuntu1604"
     BUILD_DEPENDENCIES = "libcapstone-dev"
     PIN_LIBRARIES = True
