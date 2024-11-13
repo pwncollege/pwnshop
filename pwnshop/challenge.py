@@ -314,7 +314,7 @@ class Challenge:
             'sleep 300',
             auto_remove=True,
             detach=True,
-            volumes = {"/tmp": {"bind": "/tmp", "mode": "ro"}, self.work_dir : {'bind': self.work_dir, 'mode': 'rw'}}
+            volumes = {"/tmp": {"bind": "/tmp", "mode": "rw"}, self.work_dir : {'bind': self.work_dir, 'mode': 'rw'}}
         )
 
         requirements = [ "gcc", "patchelf" ] + self.APT_DEPENDENCIES
