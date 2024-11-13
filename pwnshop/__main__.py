@@ -7,6 +7,7 @@ import pwnlib.context
 import pwnlib.log
 import signal
 import random
+import shutil
 import yaml
 import glob
 import sys
@@ -167,49 +168,51 @@ def handle_apply(args):
             if args.challenges and c['id'] not in args.challenges and f"{c['id']}:{v}" not in args.challenges:
                 continue
 
-            out_dir = f"{os.path.dirname(args.yaml)}/{c['id']}/_{v}"
+            out_dir = os.path.abspath(f"{os.path.dirname(args.yaml)}/{c['id']}/_{v}")
             print(f"Applying {c['id']} variant {v} into {out_dir}.")
-            os.makedirs(out_dir, exist_ok=True)
 
             challenge = pwnshop.ALL_CHALLENGES[c['challenge']](
                 walkthrough=walkthrough,
                 seed=seed + v,
-                work_dir=os.path.abspath(out_dir),
+                #work_dir=os.path.abspath(out_dir),
                 basename=binary_name,
             )
 
-            cur_dir = os.path.abspath(os.getcwd())
+            if os.path.exists(out_dir):
+                shutil.copytree(out_dir, challenge.work_dir, dirs_exist_ok=True)
+            else:
+                os.makedirs(out_dir)
+
             os.chdir(challenge.work_dir)
 
-            try:
-                if build_image:
-                    challenge.BUILD_IMAGE = build_image
-                if verify_image:
-                    challenge.VERIFY_IMAGE = verify_image
+            if build_image:
+                challenge.BUILD_IMAGE = build_image
+            if verify_image:
+                challenge.VERIFY_IMAGE = verify_image
 
-                if args.no_render and not args.no_build:
-                    print("... using existing source")
-                    challenge.source = open(challenge.src_path).read()
-                else:
-                    print("... rendering")
-                    challenge.render()
+            if args.no_render and not args.no_build:
+                print("... using existing source")
+                challenge.source = open(challenge.src_path).read()
+            else:
+                print("... rendering")
+                challenge.render()
 
-                if args.no_build:
-                    print("... using existing binary")
-                    challenge.binary = open(challenge.bin_path, "rb").read()
-                else:
-                    print("... building")
-                    challenge.build()
+            if args.no_build:
+                print("... using existing binary")
+                challenge.binary = open(challenge.bin_path, "rb").read()
+            else:
+                print("... building")
+                challenge.build()
 
-                if not args.no_verify:
-                    print("... verifying")
-                    challenge.verify()
-                    print("... verification passed")
+            if not args.no_verify:
+                print("... verifying")
+                challenge.verify()
+                print("... verification passed")
 
-                if not keep_source and os.path.exists(challenge.src_path):
-                    os.unlink(challenge.src_path)
-            finally:
-                os.chdir(cur_dir)
+            print(f"... copying files to {out_dir}")
+            if keep_source:
+                shutil.copy2(challenge.src_path, os.path.join(out_dir, os.path.basename(challenge.src_path)))
+            shutil.copy2(challenge.bin_path, os.path.join(out_dir, os.path.basename(challenge.bin_path)))
 
             #if pdb:
             #   with open(f"{args.out.name.replace('.exe', '.pdb')}", 'wb') as f:
