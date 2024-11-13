@@ -58,7 +58,7 @@ class ShellBadVerifier(ShellExample):
 
 class Shell1604(ShellExample):
     """
-    The same example, built using 16.04.
+    The same example, built using Ubuntu 16.04.
     """
 
     BUILD_IMAGE = "pwncollege/pwnshop-builder:ubuntu1604"
