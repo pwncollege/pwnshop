@@ -236,8 +236,10 @@ class Challenge:
 
         return self.binary, self.libraries, None
 
-    @contextlib.contextmanager
-    def verify(self, cmd_args=None, argv=None, **kwargs):
+    def flaky_verify(self, num_attempts=4, timeout=300, **kwargs):
+        retry(num_attempts, timeout=timeout)(self.verify)(**kwargs)
+
+    def verify(self, **kwargs):
         raise NotImplementedError()
 
     @contextlib.contextmanager

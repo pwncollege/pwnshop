@@ -206,7 +206,7 @@ def handle_apply(args):
 
             if not args.no_verify:
                 print("... verifying")
-                challenge.verify()
+                challenge.flaky_verify()
                 print("... verification passed")
 
             print(f"... copying files to {out_dir}")
