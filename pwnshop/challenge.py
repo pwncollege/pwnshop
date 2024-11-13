@@ -14,7 +14,8 @@ import traceback
 
 import docker
 import pyastyle
-import pwnlib.context, pwnlib.tubes
+import pwnlib.tubes
+import pwnlib.context
 from jinja2 import Environment, PackageLoader, ChoiceLoader, contextfilter
 
 from .register import register_challenge
