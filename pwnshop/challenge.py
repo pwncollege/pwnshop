@@ -585,7 +585,7 @@ def retry(max_attempts, timeout=None):
                         signal.alarm(timeout)
                     return func(*args, **kwargs)
                 except AssertionError:
-                    traceback.print_exc()
+                    print("... timed out. Retrying...")
                 finally:
                     signal.alarm(0)
 

@@ -168,7 +168,7 @@ def handle_apply(args):
                 continue
 
             out_dir = f"{os.path.dirname(args.yaml)}/{c['id']}/_{v}"
-            print(f"Building {c['id']} variant {v} into {out_dir}.")
+            print(f"Applying {c['id']} variant {v} into {out_dir}.")
             os.makedirs(out_dir, exist_ok=True)
 
             challenge = pwnshop.ALL_CHALLENGES[c['challenge']](
@@ -188,16 +188,21 @@ def handle_apply(args):
                     challenge.VERIFY_IMAGE = verify_image
 
                 if args.no_render and not args.no_build:
+                    print("... using existing source")
                     challenge.source = open(challenge.src_path).read()
                 else:
+                    print("... rendering")
                     challenge.render()
 
                 if args.no_build:
+                    print("... using existing binary")
                     challenge.binary = open(challenge.bin_path, "rb").read()
                 else:
+                    print("... building")
                     challenge.build()
 
                 if not args.no_verify:
+                    print("... verifying")
                     challenge.verify()
                     print("... verification passed")
 
