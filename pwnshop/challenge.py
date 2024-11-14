@@ -3,14 +3,12 @@ import os
 import re
 import string
 import random
-import signal
 import inspect
 import logging
 import subprocess
 import tempfile
 import textwrap
 import contextlib
-import traceback
 
 import docker
 import pyastyle
@@ -19,6 +17,7 @@ import pwnlib.context
 from jinja2 import Environment, PackageLoader, ChoiceLoader, contextfilter
 
 from .register import register_challenge
+from .util import retry
 
 pwnlib.context.context.arch = "x86_64"
 pwnlib.context.context.encoding = "latin"
@@ -574,26 +573,3 @@ class ChallengeGroup(Challenge, register=False):
         result = challenge.run_challenge()
 
         return result
-
-def retry(max_attempts, timeout=None):
-    def wrapper(func):
-        @contextlib.wraps(func)
-        def wrapped(*args, **kwargs):
-            for _ in range(max_attempts):
-                try:
-                    if timeout:
-                        def alarm(*args):
-                            raise AssertionError("ATTEMPT TIMED OUT")
-                        signal.signal(signal.SIGALRM, alarm)
-                        signal.alarm(timeout)
-                    return func(*args, **kwargs)
-                except AssertionError:
-                    print("... timed out. Retrying...")
-                finally:
-                    signal.alarm(0)
-
-            raise RuntimeError(f"Failed after {max_attempts} attempts!")
-
-        return wrapped
-
-    return wrapper

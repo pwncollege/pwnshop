@@ -153,12 +153,14 @@ def handle_apply(args):
 
     yaml_dir = os.path.abspath(os.path.dirname(args.yaml))
     y = yaml.safe_load(open(args.yaml))
+    name_prefix = y.get("binary_name_prefix", None)
+
     for c in y['challenges']:
         seed = c.get('seed', y.get('seed', args.seed))
         variants = c.get('variants', y.get('variants', 1))
         walkthrough = c.get('walkthrough', y.get('walkthrough', args.walkthrough))
         keep_source = c.get('keep_source', y.get('keep_source', False))
-        binary_name = c.get('binary_name', y.get('binary_name', c['id']))
+        binary_name = c.get('binary_name', y.get('binary_name', name_prefix + "-" + c['id'] if name_prefix else c['id']))
         build_image = c.get('build_image', y.get('build_image', None))
         verify_image = c.get('verify_image', y.get('verify_image', None))
 
