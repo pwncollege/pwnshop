@@ -110,6 +110,12 @@ class Challenge:
         if register and getattr(cls_module, "PWNSHOP_AUTOREGISTER", True):
             register_challenge(cls)
 
+    def __del__(self):
+        if self._build_container:
+            self._build_container.kill()
+        if self._verify_container:
+            self._verify_container.kill()
+
     @property
     def TEMPLATE_PATH(self):
         raise NotImplementedError()
