@@ -1,6 +1,7 @@
 import sys
 import os
 import re
+import shlex
 import string
 import random
 import inspect
@@ -280,26 +281,40 @@ class Challenge:
         if not self.binary:
             self.build()
 
-        if self._verify_container:
-            docker_cmd = "docker exec -u root -i".split()
-            for k,v in kwargs.pop("env", {}).items():
-                docker_cmd += [ "-e", f"{k}={v.decode('latin1') if type(v) is bytes else v}" ]
-            docker_cmd += [ "-w", self.work_dir ]
-            docker_cmd.append(self._verify_container.name)
-            if alarm := kwargs.pop("alarm", None):
-                docker_cmd += [ "timeout", "-sALRM", str(alarm) ]
-            argv = docker_cmd + argv
+        if not self._verify_container:
+            process = pwnlib.tubes.process.process(argv, **kwargs)
+        else:
+            env = kwargs.pop("env", {})
+            alarm = kwargs.pop("alarm", None)
+            process = pwnlib.tubes.process.process([
+                "docker", "exec", "-u", "root", "-i", "-w", self.work_dir,
+                self._verify_container.name, "/bin/sh"
+            ], **kwargs)
 
-        with pwnlib.tubes.process.process(
-            argv, **kwargs
-        ) as process:
-            if close_stdin:
-                process.stdin.close()
-            try:
-                yield process
-            finally:
-                if self._verify_container:
-                    self._verify_container.exec_run(f'chown {os.getuid()}:{os.getgid()} {self.work_dir}/core', user="root")
+            for k,v in env.items():
+                kstr = k.decode('latin1') if type(k) is bytes else k
+                with open(f"{self.work_dir}/.pwnshop-env-var", "wb") as o:
+                    o.write(v.encode('latin1') if type(v) is str else v)
+                process.sendline(f"read {kstr} < {self.work_dir}/.pwnshop-env-var; export {kstr}")
+                process.clean()
+                os.unlink(f"{self.work_dir}/.pwnshop-env-var")
+
+            if alarm := kwargs.pop("alarm", None):
+                argv = [ "/bin/timeout", "-sALRM", str(alarm) ] + argv
+
+            process.sendline("echo PWNSHOP-READY")
+            process.sendline(shlex.join(["exec"]+argv))
+            process.readuntil("PWNSHOP-READY\n")
+
+        if close_stdin:
+            process.stdin.close()
+
+        try:
+            yield process
+        finally:
+            process.kill()
+            if self._verify_container:
+                self._verify_container.exec_run(f'chown {os.getuid()}:{os.getgid()} {self.work_dir}/core', user="root")
 
     @property
     def hostname(self):
