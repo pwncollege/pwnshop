@@ -1,13 +1,13 @@
 import traceback
 import functools
 import argparse
-import logging
 import pwnshop
 import pwnlib.context
 import pwnlib.log
 import signal
 import random
 import shutil
+import ezmp
 import yaml
 import glob
 import sys
@@ -171,59 +171,64 @@ def handle_apply(args):
             if args.challenges and c['id'] not in args.challenges and f"{c['id']}:{v}" not in args.challenges:
                 continue
 
-            print(f"Applying {c['id']} variant {v}.")
+            with ezmp.Task(noop=not args.mp, buffer_output=True):
+                print(f"Applying {c['id']} variant {v}.")
 
-            print(f"... instantiating {c['challenge']}")
-            challenge = pwnshop.ALL_CHALLENGES[c['challenge']](
-                walkthrough=walkthrough,
-                seed=seed + v,
-                basename=binary_name,
-            )
+                print(f"... instantiating {c['challenge']}")
+                challenge = pwnshop.ALL_CHALLENGES[c['challenge']](
+                    walkthrough=walkthrough,
+                    seed=seed + v,
+                    basename=binary_name,
+                )
 
-            out_dir = f"{yaml_dir}/{c['id']}/_{v}"
-            if os.path.exists(out_dir):
-                shutil.copytree(out_dir, challenge.work_dir, dirs_exist_ok=True)
-            else:
-                os.makedirs(out_dir)
+                out_dir = f"{yaml_dir}/{c['id']}/_{v}"
+                if os.path.exists(out_dir):
+                    shutil.copytree(out_dir, challenge.work_dir, dirs_exist_ok=True)
+                else:
+                    os.makedirs(out_dir)
 
-            os.chdir(challenge.work_dir)
+                os.chdir(challenge.work_dir)
 
-            if build_image:
-                challenge.BUILD_IMAGE = build_image
-            if verify_image:
-                challenge.VERIFY_IMAGE = verify_image
+                if build_image:
+                    challenge.BUILD_IMAGE = build_image
+                if verify_image:
+                    challenge.VERIFY_IMAGE = verify_image
 
-            if args.no_render and not args.no_build:
-                print(f"... using existing source at {challenge.src_path}")
-                challenge.source = open(challenge.src_path).read()
-            else:
-                print(f"... rendering {challenge.src_path}")
-                challenge.render()
+                if args.no_render and not args.no_build:
+                    print(f"... using existing source at {challenge.src_path}")
+                    challenge.source = open(challenge.src_path).read()
+                else:
+                    print(f"... rendering {challenge.src_path}")
+                    challenge.render()
 
-            if args.no_build:
-                print(f"... using existing binary {challenge.bin_path}")
-                challenge.binary = open(challenge.bin_path, "rb").read()
-            else:
-                print(f"... building {challenge.bin_path}")
-                challenge.build()
+                if args.no_build:
+                    print(f"... using existing binary {challenge.bin_path}")
+                    challenge.binary = open(challenge.bin_path, "rb").read()
+                else:
+                    print(f"... building {challenge.bin_path}")
+                    challenge.build()
 
-            if not args.no_verify:
-                print(f"... verifying {challenge.bin_path}")
-                challenge.flaky_verify()
-                print("... verification passed")
+                if not args.no_verify:
+                    print(f"... verifying {challenge.bin_path}")
+                    challenge.flaky_verify()
+                    print("... verification passed")
 
-            if keep_source:
-                print(f"... copying source {os.path.basename(challenge.src_path)} to {out_dir}")
-                shutil.copy2(challenge.src_path, os.path.join(out_dir, os.path.basename(challenge.src_path)))
-            print(f"... copying binary {os.path.basename(challenge.bin_path)} to {out_dir}")
-            shutil.copy2(challenge.bin_path, os.path.join(out_dir, os.path.basename(challenge.bin_path)))
-            if os.path.exists(challenge.lib_path):
-                print(f"... copying libraries {os.path.basename(challenge.lib_path)} to {out_dir}")
-                shutil.copytree(challenge.lib_path, os.path.join(out_dir, os.path.basename(challenge.lib_path)), dirs_exist_ok=True)
+                if keep_source:
+                    print(f"... copying source {os.path.basename(challenge.src_path)} to {out_dir}")
+                    shutil.copy2(challenge.src_path, os.path.join(out_dir, os.path.basename(challenge.src_path)))
+                print(f"... copying binary {os.path.basename(challenge.bin_path)} to {out_dir}")
+                shutil.copy2(challenge.bin_path, os.path.join(out_dir, os.path.basename(challenge.bin_path)))
+                if os.path.exists(challenge.lib_path):
+                    print(f"... copying libraries {os.path.basename(challenge.lib_path)} to {out_dir}")
+                    shutil.copytree(challenge.lib_path, os.path.join(out_dir, os.path.basename(challenge.lib_path)), dirs_exist_ok=True)
 
-            #if pdb:
-            #   with open(f"{args.out.name.replace('.exe', '.pdb')}", 'wb') as f:
-            #       f.write(pdb)
+                challenge.cleanup()
+
+                #if pdb:
+                #   with open(f"{args.out.name.replace('.exe', '.pdb')}", 'wb') as f:
+                #       f.write(pdb)
+
+    ezmp.wait()
 
 def main():
     parser = argparse.ArgumentParser(description="pwnshop challenge emitter", formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -276,6 +281,11 @@ def main():
         "--variants",
         type=int,
         help="Override the number of variants specified in the yaml (useful for testing).",
+    )
+    command_apply.add_argument(
+        "--mp",
+        action="store_true",
+        help="Process challenges concurrently.",
     )
     command_apply.add_argument(
         "yaml",

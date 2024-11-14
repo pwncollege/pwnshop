@@ -105,16 +105,19 @@ class Challenge:
         self.src_path = f"{self.work_dir}/{basename}{src_extension}"
         self.lib_path = f"{self.work_dir}/lib"
 
+    def cleanup(self):
+        if self._build_container:
+            self._build_container.kill()
+        if self._verify_container:
+            self._verify_container.kill()
+
     def __init_subclass__(cls, register=True):
         cls_module = inspect.getmodule(cls)
         if register and getattr(cls_module, "PWNSHOP_AUTOREGISTER", True):
             register_challenge(cls)
 
     def __del__(self):
-        if self._build_container:
-            self._build_container.kill()
-        if self._verify_container:
-            self._verify_container.kill()
+        self.cleanup()
 
     @property
     def TEMPLATE_PATH(self):
