@@ -212,11 +212,13 @@ def handle_apply(args):
                 challenge.flaky_verify()
                 print("... verification passed")
 
-            print(f"... copying files to {out_dir}")
             if keep_source:
+                print(f"... copying source {os.path.basename(challenge.src_path)} to {out_dir}")
                 shutil.copy2(challenge.src_path, os.path.join(out_dir, os.path.basename(challenge.src_path)))
+            print(f"... copying binary {os.path.basename(challenge.bin_path)} to {out_dir}")
             shutil.copy2(challenge.bin_path, os.path.join(out_dir, os.path.basename(challenge.bin_path)))
             if os.path.exists(challenge.lib_path):
+                print(f"... copying libraries {os.path.basename(challenge.lib_path)} to {out_dir}")
                 shutil.copytree(challenge.lib_path, os.path.join(out_dir, os.path.basename(challenge.lib_path)), dirs_exist_ok=True)
 
             #if pdb:
