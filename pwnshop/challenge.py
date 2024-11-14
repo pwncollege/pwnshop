@@ -332,6 +332,9 @@ class Challenge:
             'sleep 300',
             auto_remove=True,
             detach=True,
+            cap_add=["SYS_PTRACE"],
+            security_opt=["seccomp=unconfined"],
+            sysctls={"net.ipv4.ip_unprivileged_port_start": 1024},
             network_mode="bridge",
             ulimits = [ docker.types.Ulimit(name='core', soft=-1, hard=-1) ],
             volumes = {"/tmp": {"bind": "/tmp", "mode": "rw"}, self.work_dir : {'bind': self.work_dir, 'mode': 'rw'}}
