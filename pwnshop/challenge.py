@@ -283,7 +283,7 @@ class Challenge:
         if self._verify_container:
             docker_cmd = "docker exec -u root -i".split()
             for k,v in kwargs.pop("env", {}).items():
-                docker_cmd += [ "-e", f"{k}={v.decode() if type(v) is bytes else v}" ]
+                docker_cmd += [ "-e", f"{k}={v.decode('latin1') if type(v) is bytes else v}" ]
             docker_cmd += [ "-w", self.work_dir ]
             docker_cmd.append(self._verify_container.name)
             if alarm := kwargs.pop("alarm", None):
