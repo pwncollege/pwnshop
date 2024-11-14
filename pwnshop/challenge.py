@@ -282,14 +282,25 @@ class Challenge:
             self.build()
 
         if not self._verify_container:
-            process = pwnlib.tubes.process.process(argv, **kwargs)
+            stdout_fds = kwargs.pop("stdout_fds", ())
+            def preexec_fn():
+                for i in stdout_fds:
+                    os.dup2(1, i)
+
+            process = pwnlib.tubes.process.process(argv, preexec_fn=kwargs.pop("preexec_fn", preexec_fn), **kwargs)
         else:
             env = kwargs.pop("env", {})
             alarm = kwargs.pop("alarm", None)
+            stdout_fds = kwargs.pop("stdout_fds", ())
+
             process = pwnlib.tubes.process.process([
                 "docker", "exec", "-u", "root", "-i", "-w", self.work_dir,
-                self._verify_container.name, "/bin/sh"
+                self._verify_container.name, "/bin/bash"
             ], **kwargs)
+
+            redirects = ""
+            for fd in stdout_fds:
+                redirects += f" {fd}>&1"
 
             for k,v in env.items():
                 kstr = k.decode('latin1') if type(k) is bytes else k
@@ -300,10 +311,10 @@ class Challenge:
                 os.unlink(f"{self.work_dir}/.pwnshop-env-var")
 
             if alarm:
-                argv = [ "/bin/timeout", "-sALRM", str(alarm) ] + argv
+                argv = [ "/bin/timeout", "--preserve-status", "-sALRM", str(alarm) ] + argv
 
             process.sendline("echo PWNSHOP-READY")
-            process.sendline(shlex.join(["exec"]+argv))
+            process.sendline(shlex.join(["exec"]+argv) + redirects)
             process.readuntil("PWNSHOP-READY\n")
 
         if close_stdin:
