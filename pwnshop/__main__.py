@@ -173,6 +173,7 @@ def handle_apply(args):
 
             print(f"Applying {c['id']} variant {v}.")
 
+            print(f"... instantiating {c['challenge']}")
             challenge = pwnshop.ALL_CHALLENGES[c['challenge']](
                 walkthrough=walkthrough,
                 seed=seed + v,
