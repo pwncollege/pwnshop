@@ -6,7 +6,7 @@ def retry(max_attempts, timeout=None):
     def wrapper(func):
         @contextlib.wraps(func)
         def wrapped(*args, **kwargs):
-            for _ in range(max_attempts):
+            for attempt in range(max_attempts):
                 try:
                     if timeout:
                         def alarm(*args):
@@ -19,6 +19,8 @@ def retry(max_attempts, timeout=None):
                 except AssertionError as e:
                     print("... verification failed:", e)
                     traceback.print_exc()
+                    if attempt != max_attempts - 1:
+                        print("... retrying...")
                 finally:
                     signal.alarm(0)
 
@@ -35,3 +37,11 @@ def did_segfault(process):
 def did_timeout(process):
     r = process.poll(True)
     return r in (124, 142, -signal.SIGALRM)
+
+def did_abort(process):
+    r = process.poll(True)
+    return r in (134, -signal.SIGABRT)
+
+def did_sigsys(process):
+    r = process.poll(True)
+    return r in (159, -signal.SIGSYS)
