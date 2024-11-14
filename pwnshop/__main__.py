@@ -194,21 +194,21 @@ def handle_apply(args):
                 challenge.VERIFY_IMAGE = verify_image
 
             if args.no_render and not args.no_build:
-                print("... using existing source")
+                print(f"... using existing source at {challenge.src_path}")
                 challenge.source = open(challenge.src_path).read()
             else:
-                print("... rendering")
+                print(f"... rendering {challenge.src_path}")
                 challenge.render()
 
             if args.no_build:
-                print("... using existing binary")
+                print(f"... using existing binary {challenge.bin_path}")
                 challenge.binary = open(challenge.bin_path, "rb").read()
             else:
-                print("... building")
+                print(f"... building {challenge.bin_path}")
                 challenge.build()
 
             if not args.no_verify:
-                print("... verifying")
+                print(f"... verifying {challenge.bin_path}")
                 challenge.flaky_verify()
                 print("... verification passed")
 
