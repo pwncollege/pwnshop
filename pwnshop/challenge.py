@@ -306,7 +306,7 @@ class Challenge:
 
             redirects = ""
             for fd in stdout_fds:
-                redirects += f" {fd}>&1"
+                redirects += f" {fd}>&1" #pylint:disable=consider-using-join
 
             for k,v in env.items():
                 kstr = k.decode('latin1') if type(k) is bytes else k
