@@ -299,7 +299,7 @@ class Challenge:
                 process.clean()
                 os.unlink(f"{self.work_dir}/.pwnshop-env-var")
 
-            if alarm := kwargs.pop("alarm", None):
+            if alarm:
                 argv = [ "/bin/timeout", "-sALRM", str(alarm) ] + argv
 
             process.sendline("echo PWNSHOP-READY")
