@@ -157,7 +157,7 @@ def handle_apply(args):
 
     for c in y['challenges']:
         seed = c.get('seed', y.get('seed', args.seed))
-        variants = c.get('variants', y.get('variants', 1))
+        variants = args.variants or c.get('variants', y.get('variants', 1))
         walkthrough = c.get('walkthrough', y.get('walkthrough', args.walkthrough))
         keep_source = c.get('keep_source', y.get('keep_source', False))
         binary_name = c.get('binary_name', y.get('binary_name', name_prefix + "-" + c['id'] if name_prefix else c['id']))
@@ -268,6 +268,11 @@ def main():
         "--no-render",
         action="store_true",
         help="Do not re-render the code (will be ignored if no code is available).",
+    )
+    command_apply.add_argument(
+        "--variants",
+        type=int,
+        help="Override the number of variants specified in the yaml (useful for testing).",
     )
     command_apply.add_argument(
         "yaml",
