@@ -155,7 +155,7 @@ def handle_apply(args):
     y = yaml.safe_load(open(args.yaml))
     name_prefix = y.get("binary_name_prefix", None)
 
-    task = ezmp.Task(noop=not args.mp, buffer_output=True)
+    task = ezmp.Task(noop=not args.mp, buffer_output=True, silence_successes=args.quiet)
 
     for c in y['challenges']:
         seed = c.get('seed', y.get('seed', args.seed))
@@ -283,6 +283,12 @@ def main():
         "--variants",
         type=int,
         help="Override the number of variants specified in the yaml (useful for testing).",
+    )
+    command_apply.add_argument(
+        "-q",
+        "--quiet",
+        action="store_true",
+        help="When used with --mp, only produce output for failed builds.",
     )
     command_apply.add_argument(
         "--mp",
