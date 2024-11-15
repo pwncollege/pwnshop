@@ -155,6 +155,8 @@ def handle_apply(args):
     y = yaml.safe_load(open(args.yaml))
     name_prefix = y.get("binary_name_prefix", None)
 
+    task = ezmp.Task(noop=not args.mp, buffer_output=True)
+
     for c in y['challenges']:
         seed = c.get('seed', y.get('seed', args.seed))
         variants = args.variants or c.get('variants', y.get('variants', 1))
@@ -171,7 +173,7 @@ def handle_apply(args):
             if args.challenges and c['id'] not in args.challenges and f"{c['id']}:{v}" not in args.challenges:
                 continue
 
-            with ezmp.Task(noop=not args.mp, buffer_output=True):
+            with task as t:
                 print(f"Applying {c['id']} variant {v}.")
 
                 print(f"... instantiating {c['challenge']}")
@@ -180,6 +182,8 @@ def handle_apply(args):
                     seed=seed + v,
                     basename=binary_name,
                 )
+
+                t.atexit = challenge.cleanup
 
                 out_dir = f"{yaml_dir}/{c['id']}/_{v}"
                 if os.path.exists(out_dir):
@@ -221,8 +225,6 @@ def handle_apply(args):
                 if os.path.exists(challenge.lib_path):
                     print(f"... copying libraries {os.path.basename(challenge.lib_path)} to {out_dir}")
                     shutil.copytree(challenge.lib_path, os.path.join(out_dir, os.path.basename(challenge.lib_path)), dirs_exist_ok=True)
-
-                challenge.cleanup()
 
                 #if pdb:
                 #   with open(f"{args.out.name.replace('.exe', '.pdb')}", 'wb') as f:
