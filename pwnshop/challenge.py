@@ -209,6 +209,8 @@ class Challenge:
         if self.OPTIMIZATION_FLAG:
             cmd.append(self.OPTIMIZATION_FLAG)
 
+        cmd.append(f"-ffile-prefix-map={self.work_dir}=/challenge")
+
         cmd.append("-w")
 
         cmd.append(self.src_path)
