@@ -81,6 +81,9 @@ def handle_list(args): #pylint:disable=unused-argument
 def handle_build(args, challenges):
     for challenge in challenges:
         with challenge:
+            if args.debug:
+                challenge._owns_workdir = False
+
             binary, libs, pdb = challenge.build()
             args.out.buffer.write(binary)
             if os.path.isfile(args.out.name):
@@ -136,6 +139,8 @@ def handle_verify(args, challenges):
                 signal.alarm(args.timeout)
 
             with challenge:
+                if args.debug:
+                    challenge._owns_workdir = False
                 verify_challenge(challenge, debug=args.debug, flag=args.flag, strace=args.strace)
             signal.alarm(0)
             print(f"SUCCEEDED: {name}")
@@ -180,6 +185,9 @@ def handle_apply(args):
                 seed=seed + v,
                 basename=binary_name,
             )
+
+            if args.debug:
+                challenge._owns_workdir = False
 
             with challenge, background_runner:
                 print(f"Applying {c['id']} variant {v}.")
