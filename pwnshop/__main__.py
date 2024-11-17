@@ -107,6 +107,9 @@ def verify_challenge(challenge, debug=False, flag=None, strace=False):
         with open("/flag", "wb") as f:
             f.write(flag.encode())
 
+    challenge.render()
+    challenge.build()
+
     try:
         os.chdir(challenge.work_dir)
         return challenge.verify(strace=strace)
@@ -115,7 +118,8 @@ def verify_challenge(challenge, debug=False, flag=None, strace=False):
             raise
     return challenge.verify()
 
-def verify_many(args, challenges):
+@with_challenges
+def handle_verify(args, challenges):
     failures = [ ]
     for challenge in challenges:
         name = challenge.__name__ if type(challenge) is type else type(challenge).__name__
@@ -142,10 +146,6 @@ def verify_many(args, challenges):
             print(f"FAILED: {name}")
 
     return not failures
-
-@with_challenges
-def handle_verify(args, challenges):
-    return verify_many(args, challenges)
 
 def handle_apply(args):
     if args.debug:
