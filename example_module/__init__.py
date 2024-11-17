@@ -66,11 +66,17 @@ class Shell1604(ShellExample):
     APT_DEPENDENCIES = [ "libcapstone-dev" ]
     PIN_LIBRARIES = True
 
-class Shell1604InVitu(ShellExample):
+    def build_compiler_cmd(self):
+        cmd = super().build_compiler_cmd()
+
+        # ubuntu 16.04's gcc doesn't support the file-prefix-map option we use to hide file paths
+        return [ a for a in cmd if not a.startswith("-ffile-prefix-map") ]
+
+class Shell1604InVitu(Shell1604):
     """
     The same example, built using Ubuntu 16.04 and verified in the same container, without the need for library pinning.
     """
 
     BUILD_IMAGE = "ubuntu:16.04"
     VERIFY_IMAGE = "ubuntu:16.04"
-    APT_DEPENDENCIES = [ "libcapstone-dev" ]
+    PIN_LIBRARIES = False
