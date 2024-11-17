@@ -80,21 +80,22 @@ def handle_list(args): #pylint:disable=unused-argument
 @with_challenges
 def handle_build(args, challenges):
     for challenge in challenges:
-        binary, libs, pdb = challenge.build()
-        args.out.buffer.write(binary)
-        if os.path.isfile(args.out.name):
-            os.chmod(args.out.name, 0o755)
+        with challenge:
+            binary, libs, pdb = challenge.build()
+            args.out.buffer.write(binary)
+            if os.path.isfile(args.out.name):
+                os.chmod(args.out.name, 0o755)
 
-        if args.lpath and libs:
-            os.makedirs(args.lpath, exist_ok=True)
-            for lib_name, lib_bytes in libs:
-                lib_path = args.lpath + f'/{lib_name}'
-                with open(lib_path, 'wb+') as f:
-                    f.write(lib_bytes)
-                os.chmod(lib_path, 0o755)
-        if pdb:
-            with open(f"{args.out.name.replace('.exe', '.pdb')}", 'wb') as f:
-                f.write(pdb)
+            if args.lpath and libs:
+                os.makedirs(args.lpath, exist_ok=True)
+                for lib_name, lib_bytes in libs:
+                    lib_path = args.lpath + f'/{lib_name}'
+                    with open(lib_path, 'wb+') as f:
+                        f.write(lib_bytes)
+                    os.chmod(lib_path, 0o755)
+            if pdb:
+                with open(f"{args.out.name.replace('.exe', '.pdb')}", 'wb') as f:
+                    f.write(pdb)
 
 def raise_timeout(signum, stack):
     raise TimeoutError("ACTION TIMED OUT")
@@ -134,7 +135,8 @@ def handle_verify(args, challenges):
                 signal.signal(signal.SIGALRM, raise_timeout)
                 signal.alarm(args.timeout)
 
-            verify_challenge(challenge, debug=args.debug, flag=args.flag, strace=args.strace)
+            with challenge:
+                verify_challenge(challenge, debug=args.debug, flag=args.flag, strace=args.strace)
             signal.alarm(0)
             print(f"SUCCEEDED: {name}")
         except NotImplementedError:
