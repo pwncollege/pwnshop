@@ -4,6 +4,7 @@ import re
 import shlex
 import string
 import random
+import shutil
 import inspect
 import logging
 import subprocess
@@ -95,28 +96,45 @@ class Challenge:
 
         self._build_container = None
         self._verify_container = None
+        self._owns_workdir = True
 
     def set_paths(self, work_dir=None, basename=None, src_extension="", bin_extension=""):
         self.work_dir = tempfile.mkdtemp(prefix='pwnshop-') if work_dir is None else work_dir
-        os.makedirs(self.work_dir, exist_ok=True)
+        if os.path.exists(self.work_dir):
+            self._owns_workdir = False
+        else:
+            os.makedirs(self.work_dir)
         basename = basename or self.__class__.__name__.lower()
 
         self.bin_path = f"{self.work_dir}/{basename}{bin_extension}"
         self.src_path = f"{self.work_dir}/{basename}{src_extension}"
         self.lib_path = f"{self.work_dir}/lib"
 
+    def ensure_containers(self):
+        if not self._build_container:
+            self._build_container = self._create_container(self.BUILD_IMAGE)
+        if not self._verify_container:
+            self._verify_container = self._create_container(self.VERIFY_IMAGE)
+
     def cleanup(self):
         if self._build_container:
             self._build_container.kill()
+            self._build_container = None
         if self._verify_container:
             self._verify_container.kill()
+            self._verify_container = None
+        if self._owns_workdir:
+            shutil.rmtree(self.work_dir)
 
     def __init_subclass__(cls, register=True):
         cls_module = inspect.getmodule(cls)
         if register and getattr(cls_module, "PWNSHOP_AUTOREGISTER", True):
             register_challenge(cls)
 
-    def __del__(self):
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, value, tb):
         self.cleanup()
 
     @property
@@ -226,9 +244,7 @@ class Challenge:
     def build(self):
         if not self.source:
             self.render()
-        if not self._build_container:
-            self._build_container = self._create_container(self.BUILD_IMAGE)
-
+        self.ensure_containers()
         cmd = self.build_compiler_cmd()
 
         if self._build_container:
@@ -264,8 +280,7 @@ class Challenge:
         strace=False,
         **kwargs,
     ):
-        if not self._verify_container:
-            self._verify_container = self._create_container(self.VERIFY_IMAGE)
+        self.ensure_containers()
 
         if flag_symlink:
             self.run_sh(f"ln -s /flag {flag_symlink}")
@@ -340,13 +355,11 @@ class Challenge:
 
     @property
     def hostname(self):
-        if not self._verify_container:
-            self._verify_container = self._create_container(self.VERIFY_IMAGE)
+        self.ensure_containers()
         return "localhost" if not self._verify_container else self._verify_container.attrs['NetworkSettings']['IPAddress']
 
     def run_sh(self, command, **kwargs):
-        if not self._verify_container:
-            self._verify_container = self._create_container(self.VERIFY_IMAGE)
+        self.ensure_containers()
         if self._verify_container:
             command = f"docker exec -i {self._verify_container.name} {command}"
 

@@ -155,7 +155,7 @@ def handle_apply(args):
     y = yaml.safe_load(open(args.yaml))
     name_prefix = y.get("binary_name_prefix", None)
 
-    task = ezmp.Task(noop=not args.mp, buffer_output=True, silence_successes=args.quiet)
+    background_runner = ezmp.Task(noop=not args.mp, buffer_output=True, silence_successes=args.quiet)
 
     for c in y['challenges']:
         seed = c.get('seed', y.get('seed', args.seed))
@@ -173,17 +173,16 @@ def handle_apply(args):
             if args.challenges and c['id'] not in args.challenges and f"{c['id']}:{v}" not in args.challenges:
                 continue
 
-            with task as t:
+            challenge = pwnshop.ALL_CHALLENGES[c['challenge']](
+                walkthrough=walkthrough,
+                seed=seed + v,
+                basename=binary_name,
+            )
+
+            with challenge, background_runner:
                 print(f"Applying {c['id']} variant {v}.")
 
                 print(f"... instantiating {c['challenge']}")
-                challenge = pwnshop.ALL_CHALLENGES[c['challenge']](
-                    walkthrough=walkthrough,
-                    seed=seed + v,
-                    basename=binary_name,
-                )
-
-                t.atexit = challenge.cleanup
 
                 out_dir = f"{yaml_dir}/{c['id']}/_{v}"
                 if os.path.exists(out_dir):
