@@ -442,6 +442,8 @@ class Challenge:
             os.unlink(self.DEPLOYMENT_LIB_PATH)
         if not os.path.exists(os.path.dirname(self.DEPLOYMENT_LIB_PATH)):
             os.makedirs(os.path.dirname(self.DEPLOYMENT_LIB_PATH))
+        if os.path.islink(self.DEPLOYMENT_LIB_PATH):
+            os.unlink(self.DEPLOYMENT_LIB_PATH)
         os.symlink(self.work_dir+"/lib", self.DEPLOYMENT_LIB_PATH)
 
         return libs
