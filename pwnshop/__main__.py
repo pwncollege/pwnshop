@@ -189,7 +189,7 @@ def handle_apply(args):
             if args.debug:
                 challenge._owns_workdir = False
 
-            with challenge, background_runner:
+            with background_runner, challenge:
                 print(f"Applying {c['id']} variant {v}.")
 
                 print(f"... instantiating {c['challenge']}")
