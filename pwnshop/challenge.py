@@ -118,6 +118,8 @@ class BaseChallenge:
     def run_challenge(self, *, argv=None, close_stdin=False, flag_symlink=None, **kwargs):
         self.ensure_containers()
 
+        assert argv
+
         if flag_symlink:
             self.run_sh(f"ln -s /flag {flag_symlink}")
 
@@ -278,6 +280,22 @@ class TemplatedChallenge(BaseChallenge, register=False):
             if not e.startswith("_") and e == e.upper()
         }
 
+class PythonChallenge(TemplatedChallenge, register=False):
+    @property
+    def bin_path(self):
+        return self.src_path
+
+    def build(self):
+        os.chmod(self.src_path, 0o4755)
+
+    @contextlib.contextmanager
+    def run_challenge(self, argv=None, **kwargs):
+        if not self.source:
+            self.render()
+
+        argv = argv or ["python3", self.src_path]
+        with super().run_challenge(argv=argv, **kwargs) as y:
+            yield y
 
 class Challenge(TemplatedChallenge, register=False):
     COMPILER = "gcc"

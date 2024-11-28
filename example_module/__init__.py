@@ -3,7 +3,7 @@ import pwnlib.asm, pwnlib.shellcraft
 import os
 
 class ShellBase(pwnshop.Challenge, register=False): # don't register this as an actual challenge
-    TEMPLATE_PATH = "example_shell.c"
+    TEMPLATE_PATH = "template_shell.c"
     EXEC_STACK = True
     CANARY = True
     LINK_LIBRARIES = ["capstone"]
@@ -80,3 +80,18 @@ class Shell1604InVitu(Shell1604):
     BUILD_IMAGE = "ubuntu:16.04"
     VERIFY_IMAGE = "ubuntu:16.04"
     PIN_LIBRARIES = False
+
+class PythonPass(pwnshop.PythonChallenge):
+    """
+    Simple templated python example.
+    """
+    TEMPLATE_PATH = "template_pypass.py"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.password = self.random_word(8)
+
+    def verify(self, **kwargs):
+        with self.run_challenge() as p:
+            p.sendline(self.password)
+            assert self.flag in p.readall()
