@@ -46,69 +46,28 @@ def layout_text_walkthrough(context, text):
         return "\n"
     return layout_text(text)
 
-
-class Challenge:
-    COMPILER = "gcc"
-    PIE = None
-    RELRO = "full"
-    MASM_FLAG = "-masm=intel"
-    OPTIMIZATION_FLAG = "-O0"
-    CANARY = None
-    FRAME_POINTER = None
-    STATIC = False
-    EXEC_STACK = False
-    STRIP = False
-    DEBUG_SYMBOLS = False
-
+class BaseChallenge:
     BUILD_IMAGE = None
-    APT_DEPENDENCIES = []
-    LINK_LIBRARIES = []
-    PIN_LIBRARIES = False
-    DEPLOYMENT_LIB_PATH = "/challenge/lib"
     VERIFY_IMAGE = None
+    APT_DEPENDENCIES = []
 
-
-    vbuf_in_main = True
-    vbuf_in_constructor = False
-    print_greeting = True
-    constant_goodbye = True
-    win_message = "You win! Here is your flag:"
-    static_win_function_variables = True
-
-    context = {
-        "min": min,
-        "max": max,
-        "hex": hex,
-        "hex_str_repr": hex_str_repr,
-        "layout_text": layout_text,
-        "layout_text_walkthrough": layout_text,
-    }
-
-    def __init__(self, *, seed, work_dir=None, basename=None, src_extension=".c", bin_extension=None, walkthrough=False):
-        self.seed = seed
-        self.random = random.Random(seed)
-        self.walkthrough = walkthrough
-
-        self.source = None
-        self.binary = None
-        self.libraries = None
-        self.set_paths(work_dir=work_dir, basename=basename, src_extension=src_extension or "", bin_extension=bin_extension or "")
-
-        self._build_container = None
-        self._verify_container = None
-        self._owns_workdir = True
-
-    def set_paths(self, work_dir=None, basename=None, src_extension="", bin_extension=""):
+    def __init__(self, seed, work_dir=None, walkthrough=False):
         self.work_dir = tempfile.mkdtemp(prefix='pwnshop-') if work_dir is None else work_dir
         if os.path.exists(self.work_dir):
             self._owns_workdir = False
         else:
+            self._owns_workdir = True
             os.makedirs(self.work_dir)
-        basename = basename or self.__class__.__name__.lower()
 
-        self.bin_path = f"{self.work_dir}/{basename}{bin_extension}"
-        self.src_path = f"{self.work_dir}/{basename}{src_extension}"
-        self.lib_path = f"{self.work_dir}/lib"
+        self._build_container = None
+        self._verify_container = None
+
+        self.seed = seed
+        self.random = random.Random(seed)
+        self.walkthrough = walkthrough
+
+    def random_word(self, length, vocabulary=string.ascii_lowercase):
+        return "".join(self.random.choice(vocabulary) for _ in range(length))
 
     def ensure_containers(self):
         if not self._build_container:
@@ -126,16 +85,127 @@ class Challenge:
         if self._owns_workdir:
             shutil.rmtree(self.work_dir)
 
-    def __init_subclass__(cls, register=True):
-        cls_module = inspect.getmodule(cls)
-        if register and getattr(cls_module, "PWNSHOP_AUTOREGISTER", True):
-            register_challenge(cls)
-
     def __enter__(self):
+        self.ensure_containers()
         return self
 
     def __exit__(self, exc_type, value, tb):
         self.cleanup()
+
+    def render(self):
+        pass
+
+    def build(self):
+        pass
+
+    def run_challenge(self, **kwargs):
+        pass
+
+    def run_sh(self, command, **kwargs):
+        self.ensure_containers()
+        if self._verify_container:
+            command = f"docker exec -i {self._verify_container.name} {command}"
+
+        return pwnlib.tubes.process.process(command, shell=True, **kwargs)
+
+    @property
+    def hostname(self):
+        self.ensure_containers()
+        return "localhost" if not self._verify_container else self._verify_container.attrs['NetworkSettings']['IPAddress']
+
+    def _create_container(self, image=None):
+        if not image:
+            return None
+
+        client = docker.from_env()
+        if ":" in image:
+            img, tag = image.split(':')
+        else:
+            img, tag = image, "latest"
+        client.images.pull(img, tag=tag)
+
+        #TODO: container life is context manager
+        container = client.containers.run(
+            img + ':' + tag,
+            'sleep 300',
+            auto_remove=True,
+            detach=True,
+            cap_add=["SYS_PTRACE"],
+            security_opt=["seccomp=unconfined"],
+            sysctls={"net.ipv4.ip_unprivileged_port_start": 1024},
+            network_mode="bridge",
+            ulimits = [ docker.types.Ulimit(name='core', soft=-1, hard=-1) ],
+            volumes = {"/tmp": {"bind": "/tmp", "mode": "rw"}, self.work_dir : {'bind': self.work_dir, 'mode': 'rw'}}
+        )
+
+        requirements = [ "gcc", "patchelf" ] + self.APT_DEPENDENCIES
+        _, out = container.exec_run(
+            f"""/bin/bash -c 'dpkg -l | cut -f3 -d" " | grep -E "^({ "|".join(requirements) })$"'""",
+            user="root"
+        )
+
+        missing = set(requirements) - set(out.decode().strip().split("\n"))
+
+        if missing:
+            ret, out = container.exec_run(f'/bin/bash -c "apt-get update && apt-get install -y {" ".join(missing)}"', user="root")
+            if ret != 0:
+                print("DEPENDENCY INSTALL ERROR:")
+                print(out.decode('latin1'))
+            assert ret == 0, out
+
+        container.reload()
+        return container
+
+
+class Challenge(BaseChallenge):
+    COMPILER = "gcc"
+    PIE = None
+    RELRO = "full"
+    MASM_FLAG = "-masm=intel"
+    OPTIMIZATION_FLAG = "-O0"
+    CANARY = None
+    FRAME_POINTER = None
+    STATIC = False
+    EXEC_STACK = False
+    STRIP = False
+    DEBUG_SYMBOLS = False
+
+    LINK_LIBRARIES = []
+    PIN_LIBRARIES = False
+    DEPLOYMENT_LIB_PATH = "/challenge/lib"
+
+    vbuf_in_main = True
+    vbuf_in_constructor = False
+    print_greeting = True
+    constant_goodbye = True
+    win_message = "You win! Here is your flag:"
+    static_win_function_variables = True
+
+    context = {
+        "min": min,
+        "max": max,
+        "hex": hex,
+        "hex_str_repr": hex_str_repr,
+        "layout_text": layout_text,
+        "layout_text_walkthrough": layout_text,
+    }
+
+    def __init__(self, *, seed, work_dir=None, basename=None, src_extension=".c", bin_extension="", walkthrough=False):
+        super().__init__(seed, work_dir=work_dir, walkthrough=walkthrough)
+
+        self.source = None
+        self.binary = None
+        self.libraries = None
+
+        basename = basename or self.__class__.__name__.lower()
+        self.bin_path = f"{self.work_dir}/{basename}{bin_extension}"
+        self.src_path = f"{self.work_dir}/{basename}{src_extension}"
+        self.lib_path = f"{self.work_dir}/lib"
+
+    def __init_subclass__(cls, register=True):
+        cls_module = inspect.getmodule(cls)
+        if register and getattr(cls_module, "PWNSHOP_AUTOREGISTER", True):
+            register_challenge(cls)
 
     @property
     def TEMPLATE_PATH(self):
@@ -153,9 +223,6 @@ class Challenge:
     def flag(self):
         with open("/flag", "rb") as f:
             return f.read()
-
-    def random_word(self, length, vocabulary=string.ascii_lowercase):
-        return "".join(self.random.choice(vocabulary) for _ in range(length))
 
     def render(self):
         env = Environment(loader=ChoiceLoader([
@@ -352,61 +419,6 @@ class Challenge:
             process.kill()
             if self._verify_container:
                 self._verify_container.exec_run(f'chown {os.getuid()}:{os.getgid()} {self.work_dir}/core', user="root")
-
-    @property
-    def hostname(self):
-        self.ensure_containers()
-        return "localhost" if not self._verify_container else self._verify_container.attrs['NetworkSettings']['IPAddress']
-
-    def run_sh(self, command, **kwargs):
-        self.ensure_containers()
-        if self._verify_container:
-            command = f"docker exec -i {self._verify_container.name} {command}"
-
-        return pwnlib.tubes.process.process(command, shell=True, **kwargs)
-
-    def _create_container(self, image=None):
-        if not image:
-            return None
-
-        client = docker.from_env()
-        if ":" in image:
-            img, tag = image.split(':')
-        else:
-            img, tag = image, "latest"
-        client.images.pull(img, tag=tag)
-
-        #TODO: container life is context manager
-        container = client.containers.run(
-            img + ':' + tag,
-            'sleep 300',
-            auto_remove=True,
-            detach=True,
-            cap_add=["SYS_PTRACE"],
-            security_opt=["seccomp=unconfined"],
-            sysctls={"net.ipv4.ip_unprivileged_port_start": 1024},
-            network_mode="bridge",
-            ulimits = [ docker.types.Ulimit(name='core', soft=-1, hard=-1) ],
-            volumes = {"/tmp": {"bind": "/tmp", "mode": "rw"}, self.work_dir : {'bind': self.work_dir, 'mode': 'rw'}}
-        )
-
-        requirements = [ "gcc", "patchelf" ] + self.APT_DEPENDENCIES
-        _, out = container.exec_run(
-            f"""/bin/bash -c 'dpkg -l | cut -f3 -d" " | grep -E "^({ "|".join(requirements) })$"'""",
-            user="root"
-        )
-
-        missing = set(requirements) - set(out.decode().strip().split("\n"))
-
-        if missing:
-            ret, out = container.exec_run(f'/bin/bash -c "apt-get update && apt-get install -y {" ".join(missing)}"', user="root")
-            if ret != 0:
-                print("DEPENDENCY INSTALL ERROR:")
-                print(out.decode('latin1'))
-            assert ret == 0, out
-
-        container.reload()
-        return container
 
     def pin_libraries(self):
         assert self._build_container
