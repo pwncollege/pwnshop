@@ -66,6 +66,16 @@ class BaseChallenge:
         self.random = random.Random(seed)
         self.walkthrough = walkthrough
 
+    def __init_subclass__(cls, register=True):
+        cls_module = inspect.getmodule(cls)
+        if register and getattr(cls_module, "PWNSHOP_AUTOREGISTER", True):
+            register_challenge(cls)
+
+    @property
+    def flag(self):
+        with open("/flag", "rb") as f:
+            return f.read()
+
     def random_word(self, length, vocabulary=string.ascii_lowercase):
         return "".join(self.random.choice(vocabulary) for _ in range(length))
 
@@ -97,6 +107,12 @@ class BaseChallenge:
 
     def build(self):
         pass
+
+    def flaky_verify(self, num_attempts=4, timeout=300, **kwargs):
+        retry(num_attempts, timeout=timeout)(self.verify)(**kwargs)
+
+    def verify(self, **kwargs):
+        raise NotImplementedError()
 
     def run_challenge(self, **kwargs):
         pass
@@ -156,8 +172,55 @@ class BaseChallenge:
         container.reload()
         return container
 
+class TemplatedChallenge(BaseChallenge, register=False):
+    context = { }
 
-class Challenge(BaseChallenge):
+    def __init__(self, *args, basename=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.source = None
+
+        basename = basename or self.__class__.__name__.lower()
+        self.src_path = f"{self.work_dir}/{basename}"
+
+    @property
+    def TEMPLATE_PATH(self):
+        raise NotImplementedError()
+
+    def render(self):
+        env = Environment(loader=ChoiceLoader([
+            PackageLoader(__name__, ""),
+            PackageLoader(__name__, "templates"),
+            PackageLoader(inspect.getmodule(self).__name__, ""),
+            PackageLoader(inspect.getmodule(self).__name__, ".."),
+        ]), trim_blocks=True)
+        env.filters["layout_text"] = layout_text
+        env.filters["layout_text_walkthrough"] = layout_text_walkthrough
+        template = env.get_template(self.TEMPLATE_PATH)
+        result = template.render(
+            challenge=self,
+            walkthrough=self.walkthrough,
+            **self.context,
+            **self.local_context,
+        )
+        result = pyastyle.format(result, "--style=allman")
+        result = re.sub("\n{2,}", "\n\n", result)
+
+        self.source = result
+        with open(self.src_path, "w") as o:
+            o.write(self.source)
+
+        return result
+
+    @property
+    def local_context(self):
+        return {
+            e: getattr(self, e)
+            for e in dir(self)
+            if not e.startswith("_") and e == e.upper()
+        }
+
+
+class Challenge(TemplatedChallenge, register=False):
     COMPILER = "gcc"
     PIE = None
     RELRO = "full"
@@ -191,63 +254,15 @@ class Challenge(BaseChallenge):
     }
 
     def __init__(self, *, seed, work_dir=None, basename=None, src_extension=".c", bin_extension="", walkthrough=False):
-        super().__init__(seed, work_dir=work_dir, walkthrough=walkthrough)
+        super().__init__(seed, work_dir=work_dir, basename=basename, walkthrough=walkthrough)
 
-        self.source = None
         self.binary = None
         self.libraries = None
 
         basename = basename or self.__class__.__name__.lower()
-        self.bin_path = f"{self.work_dir}/{basename}{bin_extension}"
         self.src_path = f"{self.work_dir}/{basename}{src_extension}"
+        self.bin_path = f"{self.work_dir}/{basename}{bin_extension}"
         self.lib_path = f"{self.work_dir}/lib"
-
-    def __init_subclass__(cls, register=True):
-        cls_module = inspect.getmodule(cls)
-        if register and getattr(cls_module, "PWNSHOP_AUTOREGISTER", True):
-            register_challenge(cls)
-
-    @property
-    def TEMPLATE_PATH(self):
-        raise NotImplementedError()
-
-    @property
-    def local_context(self):
-        return {
-            e: getattr(self, e)
-            for e in dir(self)
-            if not e.startswith("_") and e == e.upper()
-        }
-
-    @property
-    def flag(self):
-        with open("/flag", "rb") as f:
-            return f.read()
-
-    def render(self):
-        env = Environment(loader=ChoiceLoader([
-            PackageLoader(__name__, ""),
-            PackageLoader(__name__, "templates"),
-            PackageLoader(inspect.getmodule(self).__name__, ""),
-            PackageLoader(inspect.getmodule(self).__name__, ".."),
-        ]), trim_blocks=True)
-        env.filters["layout_text"] = layout_text
-        env.filters["layout_text_walkthrough"] = layout_text_walkthrough
-        template = env.get_template(self.TEMPLATE_PATH)
-        result = template.render(
-            challenge=self,
-            walkthrough=self.walkthrough,
-            **self.context,
-            **self.local_context,
-        )
-        result = pyastyle.format(result, "--style=allman")
-        result = re.sub("\n{2,}", "\n\n", result)
-
-        self.source = result
-        with open(self.src_path, "w") as o:
-            o.write(self.source)
-
-        return result
 
     def build_compiler_cmd(self):
         cmd = [self.COMPILER]
@@ -329,12 +344,6 @@ class Challenge(BaseChallenge):
             self.binary = f.read()
 
         return self.binary, self.libraries, None
-
-    def flaky_verify(self, num_attempts=4, timeout=300, **kwargs):
-        retry(num_attempts, timeout=timeout)(self.verify)(**kwargs)
-
-    def verify(self, **kwargs):
-        raise NotImplementedError()
 
     @contextlib.contextmanager
     def run_challenge(
