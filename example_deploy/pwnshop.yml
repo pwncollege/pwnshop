@@ -22,3 +22,6 @@ challenges:
   challenge: PythonPass
   binary_name: pp
   variants: 2
+- id: checked-shell
+  challenge: CheckedShellcode
+  variants: 2

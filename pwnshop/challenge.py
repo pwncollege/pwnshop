@@ -12,6 +12,7 @@ import tempfile
 import textwrap
 import contextlib
 
+import black
 import docker
 import pyastyle
 import pwnlib.tubes
@@ -51,7 +52,7 @@ class BaseChallenge:
     VERIFY_IMAGE = None
     APT_DEPENDENCIES = []
 
-    def __init__(self, seed, work_dir=None, walkthrough=False):
+    def __init__(self, seed, work_dir=None, walkthrough=False, basename=None):
         self.work_dir = tempfile.mkdtemp(prefix='pwnshop-') if work_dir is None else work_dir
         if os.path.exists(self.work_dir):
             self._owns_workdir = False
@@ -65,6 +66,12 @@ class BaseChallenge:
         self.seed = seed
         self.random = random.Random(seed)
         self.walkthrough = walkthrough
+
+        self.basename = basename or self.default_basename()
+
+    @classmethod
+    def default_basename(cls):
+        return cls.__name__.lower().replace("_", "-")
 
     def __init_subclass__(cls, register=True):
         cls_module = inspect.getmodule(cls)
@@ -233,19 +240,24 @@ class BaseChallenge:
         container.reload()
         return container
 
+    def deploy(self, dst_dir, *, bin=True, src=True, libs=True): #pylint:disable=redefined-builtin
+        pass
+
 class TemplatedChallenge(BaseChallenge, register=False):
     context = { }
 
-    def __init__(self, *args, basename=None, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.source = None
 
-        basename = basename or self.__class__.__name__.lower()
-        self.src_path = f"{self.work_dir}/{basename}"
+        self.src_path = f"{self.work_dir}/{self.basename}"
 
     @property
     def TEMPLATE_PATH(self):
         raise NotImplementedError()
+
+    def style(self, src):
+        return src
 
     def render(self):
         env = Environment(loader=ChoiceLoader([
@@ -263,8 +275,7 @@ class TemplatedChallenge(BaseChallenge, register=False):
             **self.context,
             **self.local_context,
         )
-        result = pyastyle.format(result, "--style=allman")
-        result = re.sub("\n{2,}", "\n\n", result)
+        result = self.style(result)
 
         self.source = result
         with open(self.src_path, "w") as o:
@@ -280,13 +291,24 @@ class TemplatedChallenge(BaseChallenge, register=False):
             if not e.startswith("_") and e == e.upper()
         }
 
+    def deploy(self, dst_dir, *, src=False, **kwargs):
+        super().deploy(dst_dir, **kwargs)
+        if src:
+            shutil.copy2(self.src_path, os.path.join(dst_dir, os.path.basename(self.src_path)))
+
+
 class PythonChallenge(TemplatedChallenge, register=False):
     @property
     def bin_path(self):
         return self.src_path
 
     def build(self):
+        if not self.source:
+            self.render()
         os.chmod(self.src_path, 0o4755)
+
+    def style(self, src):
+        return black.format_file_contents(src, fast=False, mode=black.FileMode(line_length=120))
 
     @contextlib.contextmanager
     def run_challenge(self, argv=None, **kwargs):
@@ -296,6 +318,9 @@ class PythonChallenge(TemplatedChallenge, register=False):
         argv = argv or ["python3", self.src_path]
         with super().run_challenge(argv=argv, **kwargs) as y:
             yield y
+
+    def deploy(self, dst_dir, *, src=False, **kwargs):
+        super().deploy(dst_dir, src=src or bin, **kwargs)
 
 class Challenge(TemplatedChallenge, register=False):
     COMPILER = "gcc"
@@ -336,10 +361,14 @@ class Challenge(TemplatedChallenge, register=False):
         self.binary = None
         self.libraries = None
 
-        basename = basename or self.__class__.__name__.lower()
-        self.src_path = f"{self.work_dir}/{basename}{src_extension}"
-        self.bin_path = f"{self.work_dir}/{basename}{bin_extension}"
+        self.src_path = f"{self.work_dir}/{self.basename}{src_extension}"
+        self.bin_path = f"{self.work_dir}/{self.basename}{bin_extension}"
         self.lib_path = f"{self.work_dir}/lib"
+
+    def style(self, src):
+        src = pyastyle.format(src, "--style=allman")
+        src = re.sub("\n{2,}", "\n\n", src)
+        return src
 
     def build_compiler_cmd(self):
         cmd = [self.COMPILER]
@@ -423,7 +452,7 @@ class Challenge(TemplatedChallenge, register=False):
         return self.binary, self.libraries, None
 
     @contextlib.contextmanager
-    def run_challenge( #pylint:disable=arguments-differ
+    def run_challenge(
         self,
         *,
         cmd_args=None,
@@ -486,6 +515,16 @@ class Challenge(TemplatedChallenge, register=False):
         os.symlink(self.work_dir+"/lib", self.DEPLOYMENT_LIB_PATH)
 
         return libs
+
+    def deploy(self, dst_dir, *, bin=True, libs=True, **kwargs): #pylint:disable=redefined-builtin
+        super().deploy(dst_dir, **kwargs)
+        if bin:
+            shutil.copy2(self.bin_path, os.path.join(dst_dir, os.path.basename(self.bin_path)))
+
+        if libs and os.path.exists(self.lib_path):
+            shutil.copytree(self.lib_path, os.path.join(dst_dir, os.path.basename(self.lib_path)), dirs_exist_ok=True)
+
+
 
 class WindowsChallenge(Challenge, register=False):
     COMPILER = "cl"
@@ -647,23 +686,28 @@ class KernelChallenge(Challenge, register=False):
 
 class ChallengeGroup(Challenge, register=False):
     challenges = [ ]
+    challenge_names = None
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, challenge_names=None, basename=None, **kwargs):
         super().__init__(*args, **kwargs)
+
+        self.challenge_names = challenge_names or self.challenge_names or [ self.basename + "-" + c.default_basename() for c in self.challenges ]
+
+        kwargs.pop("workdir", None)
         self.challenge_instances = [
-            challenge(*args, **kwargs) for challenge in self.challenges
+            challenge(*args, work_dir=self.work_dir, basename=name, **kwargs)
+            for challenge,name in zip(self.challenges, self.challenge_names)
         ]
 
     def render(self):
-        for challenge in self.challenge_instances:
-            yield challenge.render()
+        return { c: c.render() for c in self.challenge_instances }
 
     def build(self):
-        for challenge in self.challenge_instances:
-            yield challenge.build()
+        return { c: c.build() for c in self.challenge_instances }
 
     def run_challenge(self, **kwargs): #pylint:disable=arguments-differ
-        challenge = self.challenge_instances[0]
-        result = challenge.run_challenge()
+        pass
 
-        return result
+    def deploy(self, dst_dir, **kwargs):
+        for c in self.challenge_instances:
+            c.deploy(dst_dir, **kwargs)

@@ -63,14 +63,21 @@ def with_challenges(f):
 @with_challenges
 def handle_render(args, challenges):
     for challenge in challenges:
-        src = challenge.render()
-        if not args.line_numbers:
-            args.out.write(src+"\n")
+        if isinstance(challenge, pwnshop.ChallengeGroup):
+            for challenge,src in challenge.render().items():
+                src = challenge.render()
+                for i, line in enumerate(src.splitlines()):
+                    args.out.write(f"{os.path.basename(challenge.src_path)}:{i + 1}\t{line}\n")
+                args.out.write("\n")
         else:
-            for i, line in enumerate(src.splitlines()):
-                args.out.write(f"{i + 1}\t{line}\n")
-        if os.path.isfile(args.out.name):
-            os.chmod(args.out.name, 0o644)
+            src = challenge.render()
+            if not args.line_numbers:
+                args.out.write(src+"\n")
+            else:
+                for i, line in enumerate(src.splitlines()):
+                    args.out.write(f"{i + 1}\t{line}\n")
+            if os.path.isfile(args.out.name):
+                os.chmod(args.out.name, 0o644)
 
 def handle_list(args): #pylint:disable=unused-argument
     for module,challenges in pwnshop.MODULE_LEVELS.items():
@@ -226,14 +233,9 @@ def handle_apply(args):
                     challenge.flaky_verify()
                     print("... verification passed")
 
-                if keep_source:
-                    print(f"... copying source {os.path.basename(challenge.src_path)} to {out_dir}")
-                    shutil.copy2(challenge.src_path, os.path.join(out_dir, os.path.basename(challenge.src_path)))
-                print(f"... copying binary {os.path.basename(challenge.bin_path)} to {out_dir}")
-                shutil.copy2(challenge.bin_path, os.path.join(out_dir, os.path.basename(challenge.bin_path)))
-                if hasattr(challenge, "lib_path") and os.path.exists(challenge.lib_path):
-                    print(f"... copying libraries {os.path.basename(challenge.lib_path)} to {out_dir}")
-                    shutil.copytree(challenge.lib_path, os.path.join(out_dir, os.path.basename(challenge.lib_path)), dirs_exist_ok=True)
+                if not args.no_deploy:
+                    print(f"... deploying challenge to {out_dir}")
+                    challenge.deploy(out_dir, bin=True, src=keep_source, libs=True)
 
                 #if pdb:
                 #   with open(f"{args.out.name.replace('.exe', '.pdb')}", 'wb') as f:
@@ -276,17 +278,22 @@ def main():
     command_apply.add_argument(
         "--no-verify",
         action="store_true",
-        help="Do not verify the built binaries.",
+        help="Do not verify the challenge.",
     )
     command_apply.add_argument(
         "--no-build",
         action="store_true",
-        help="Do not build the binaries (only verify).",
+        help="Do not build the challenge (e.g., only verify).",
     )
     command_apply.add_argument(
         "--no-render",
         action="store_true",
         help="Do not re-render the code (will be ignored if no code is available).",
+    )
+    command_apply.add_argument(
+        "--no-deploy",
+        action="store_true",
+        help="Do not deploy the built challenge.",
     )
     command_apply.add_argument(
         "--variants",

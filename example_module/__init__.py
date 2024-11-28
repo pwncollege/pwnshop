@@ -95,3 +95,36 @@ class PythonPass(pwnshop.PythonChallenge):
         with self.run_challenge() as p:
             p.sendline(self.password)
             assert self.flag in p.readall()
+
+#
+# A challenge made out of individual challenges
+#
+
+class ShellcodeChecker(pwnshop.PythonChallenge):
+    TEMPLATE_PATH = "template_checker.py"
+    shellcode_runner = "runner"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.password = self.random_word(8)
+
+class CheckedShellcode(pwnshop.ChallengeGroup):
+    challenges = [ ShellcodeChecker, ShellExample ]
+    challenge_names = [ "checker", "runner" ]
+
+    def verify(self, **kwargs):
+        with self.challenge_instances[0].run_challenge() as p:
+            shellcode = pwnlib.asm.asm(
+                pwnlib.shellcraft.write(1, self.challenge_instances[0].password, len(self.challenge_instances[0].password)) +
+                pwnlib.shellcraft.exit(0)
+            )
+            p.send(shellcode)
+            assert self.flag in p.readall()
+
+        with self.challenge_instances[0].run_challenge() as p:
+            shellcode = pwnlib.asm.asm(
+                pwnlib.shellcraft.write(1, b"asdf", 4) +
+                pwnlib.shellcraft.exit(0)
+            )
+            p.send(shellcode)
+            assert self.flag not in p.readall()

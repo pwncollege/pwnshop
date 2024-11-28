@@ -11,10 +11,9 @@
 
 {% block main %}
   {% filter layout_text %}
-    This challenge reads in some bytes, modifies them (depending on the specific challenge configuration), and executes them as code!
+    This challenge reads in some bytes and executes them as code!
     This is a common exploitation scenario, called `code injection`.
-    Through this series of challenges, you will practice your shellcode writing skills under various constraints!
-    To ensure that you are shellcoding, rather than doing other tricks, this will sanitize all environment variables and arguments and close all file descriptors > 2.
+    To ensure that you are shellcoding, rather than doing other tricks, we will sanitize all environment variables and arguments and close all file descriptors > 2.
   {% endfilter %}
 
   for (int i = 3; i < 10000; i++) close(i);
@@ -31,16 +30,6 @@
   {{ "Reading {} bytes from stdin.".format(hex(challenge.shellcode_size)) | layout_text }}
   shellcode_size = read(0, shellcode, {{ hex(challenge.shellcode_size) }});
   assert(shellcode_size > 0);
-
-  {% if challenge.shellcode_filter %}
-    {{ "Executing filter..." | layout_text }}
-    {% include challenge.shellcode_filter %}
-  {% endif +%}
-
-  {% if challenge.remap_rx_size > 0 %}
-    {{ "Removing write permissions from first {} bytes of shellcode.".format(challenge.remap_rx_size) | layout_text }}
-    assert(mprotect(shellcode, {{ challenge.remap_rx_size }}, PROT_READ|PROT_EXEC) == 0);
-  {% endif %}
 
   {{ "This challenge is about to execute the following shellcode:" | layout_text }}
   print_disassembly(shellcode, shellcode_size);
