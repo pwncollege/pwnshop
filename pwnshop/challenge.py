@@ -114,8 +114,67 @@ class BaseChallenge:
     def verify(self, **kwargs):
         raise NotImplementedError()
 
-    def run_challenge(self, **kwargs):
-        pass
+    @contextlib.contextmanager
+    def run_challenge(self, *, argv=None, close_stdin=False, flag_symlink=None, **kwargs):
+        self.ensure_containers()
+
+        if flag_symlink:
+            self.run_sh(f"ln -s /flag {flag_symlink}")
+
+        if self._verify_container:
+            ret, _ = self._verify_container.exec_run(f"""/bin/bash -c 'echo -n "{self.flag.decode()}" | tee /flag'""", user="root")
+            assert ret == 0
+            _, out = self._verify_container.exec_run("cat /flag", user="root")
+            assert out == self.flag
+        else:
+            with open("/flag", "rb") as f:
+                assert f.read() == self.flag
+
+        if not self._verify_container:
+            stdout_fds = kwargs.pop("stdout_fds", ())
+            def preexec_fn():
+                for i in stdout_fds:
+                    os.dup2(1, i)
+
+            process = pwnlib.tubes.process.process(argv, preexec_fn=kwargs.pop("preexec_fn", preexec_fn), **kwargs)
+        else:
+            env = kwargs.pop("env", {})
+            alarm = kwargs.pop("alarm", None)
+            stdout_fds = kwargs.pop("stdout_fds", ())
+
+            process = pwnlib.tubes.process.process([
+                "docker", "exec", "-u", "root", "-i", "-w", self.work_dir,
+                self._verify_container.name, "/bin/bash"
+            ], **kwargs)
+
+            redirects = ""
+            for fd in stdout_fds:
+                redirects += f" {fd}>&1" #pylint:disable=consider-using-join
+
+            for k,v in env.items():
+                kstr = k.decode('latin1') if type(k) is bytes else k
+                with open(f"{self.work_dir}/.pwnshop-env-var", "wb") as o:
+                    o.write(v.encode('latin1') if type(v) is str else v)
+                process.sendline(f"read {kstr} < {self.work_dir}/.pwnshop-env-var; export {kstr}")
+                process.clean()
+                os.unlink(f"{self.work_dir}/.pwnshop-env-var")
+
+            if alarm:
+                argv = [ "/bin/timeout", "--preserve-status", "-sALRM", str(alarm) ] + argv
+
+            process.sendline("echo PWNSHOP-READY")
+            process.sendline(shlex.join(["exec"]+argv) + redirects)
+            process.readuntil("PWNSHOP-READY\n")
+
+        if close_stdin:
+            process.stdin.close()
+
+        try:
+            yield process
+        finally:
+            process.kill()
+            if self._verify_container:
+                self._verify_container.exec_run(f'chown {os.getuid()}:{os.getgid()} {self.work_dir}/core', user="root")
 
     def run_sh(self, command, **kwargs):
         self.ensure_containers()
@@ -346,30 +405,14 @@ class Challenge(TemplatedChallenge, register=False):
         return self.binary, self.libraries, None
 
     @contextlib.contextmanager
-    def run_challenge(
+    def run_challenge( #pylint:disable=arguments-differ
         self,
         *,
         cmd_args=None,
         argv=None,
-        flag_symlink=None,
-        close_stdin=False,
         strace=False,
         **kwargs,
     ):
-        self.ensure_containers()
-
-        if flag_symlink:
-            self.run_sh(f"ln -s /flag {flag_symlink}")
-
-        if self._verify_container:
-            ret, _ = self._verify_container.exec_run(f"""/bin/bash -c 'echo -n "{self.flag.decode()}" | tee /flag'""", user="root")
-            assert ret == 0
-            _, out = self._verify_container.exec_run("cat /flag", user="root")
-            assert out == self.flag
-        else:
-            with open("/flag", "rb") as f:
-                assert f.read() == self.flag
-
         if argv is None:
             argv = [self.bin_path]
             if cmd_args:
@@ -383,51 +426,8 @@ class Challenge(TemplatedChallenge, register=False):
         if not self.binary:
             self.build()
 
-        if not self._verify_container:
-            stdout_fds = kwargs.pop("stdout_fds", ())
-            def preexec_fn():
-                for i in stdout_fds:
-                    os.dup2(1, i)
-
-            process = pwnlib.tubes.process.process(argv, preexec_fn=kwargs.pop("preexec_fn", preexec_fn), **kwargs)
-        else:
-            env = kwargs.pop("env", {})
-            alarm = kwargs.pop("alarm", None)
-            stdout_fds = kwargs.pop("stdout_fds", ())
-
-            process = pwnlib.tubes.process.process([
-                "docker", "exec", "-u", "root", "-i", "-w", self.work_dir,
-                self._verify_container.name, "/bin/bash"
-            ], **kwargs)
-
-            redirects = ""
-            for fd in stdout_fds:
-                redirects += f" {fd}>&1" #pylint:disable=consider-using-join
-
-            for k,v in env.items():
-                kstr = k.decode('latin1') if type(k) is bytes else k
-                with open(f"{self.work_dir}/.pwnshop-env-var", "wb") as o:
-                    o.write(v.encode('latin1') if type(v) is str else v)
-                process.sendline(f"read {kstr} < {self.work_dir}/.pwnshop-env-var; export {kstr}")
-                process.clean()
-                os.unlink(f"{self.work_dir}/.pwnshop-env-var")
-
-            if alarm:
-                argv = [ "/bin/timeout", "--preserve-status", "-sALRM", str(alarm) ] + argv
-
-            process.sendline("echo PWNSHOP-READY")
-            process.sendline(shlex.join(["exec"]+argv) + redirects)
-            process.readuntil("PWNSHOP-READY\n")
-
-        if close_stdin:
-            process.stdin.close()
-
-        try:
-            yield process
-        finally:
-            process.kill()
-            if self._verify_container:
-                self._verify_container.exec_run(f'chown {os.getuid()}:{os.getgid()} {self.work_dir}/core', user="root")
+        with super().run_challenge(argv=argv, **kwargs) as y:
+            yield y
 
     def pin_libraries(self):
         assert self._build_container
