@@ -265,7 +265,7 @@ class TemplatedChallenge(BaseChallenge, register=False):
             PackageLoader(__name__, "templates"),
         ]
         for cls in self.__class__.__mro__:
-            if not issubclass(cls, Challenge):
+            if not issubclass(cls, BaseChallenge):
                 continue
             loader_list.append(PackageLoader(inspect.getmodule(cls).__name__, ""))
             loader_list.append(PackageLoader(inspect.getmodule(cls).__name__, ".."))
