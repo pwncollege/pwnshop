@@ -260,12 +260,17 @@ class TemplatedChallenge(BaseChallenge, register=False):
         return src
 
     def render(self):
-        env = Environment(loader=ChoiceLoader([
+        loader_list = [
             PackageLoader(__name__, ""),
             PackageLoader(__name__, "templates"),
-            PackageLoader(inspect.getmodule(self).__name__, ""),
-            PackageLoader(inspect.getmodule(self).__name__, ".."),
-        ]), trim_blocks=True)
+        ]
+        for cls in self.__class__.__mro__:
+            if not issubclass(cls, Challenge):
+                continue
+            loader_list.append(PackageLoader(inspect.getmodule(cls).__name__, ""))
+            loader_list.append(PackageLoader(inspect.getmodule(cls).__name__, ".."))
+
+        env = Environment(loader=ChoiceLoader(loader_list), trim_blocks=True)
         env.filters["layout_text"] = layout_text
         env.filters["layout_text_walkthrough"] = layout_text_walkthrough
         template = env.get_template(self.TEMPLATE_PATH)
