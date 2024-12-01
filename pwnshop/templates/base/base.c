@@ -73,6 +73,7 @@
     {% endif %}
 
     {% if challenge.win_message %}puts("{{challenge.win_message}}");{% endif %}
+    {% for _ in range(challenge.win_repeats or 1) %}
     flag_fd = open("/flag", 0);
     if (flag_fd < 0) {
         printf("\n  ERROR: Failed to open the flag -- %s!\n", strerror(errno));
@@ -90,6 +91,7 @@
     {% set stdout = "fileno(thread_stdout)" if challenge.threaded_server else "1"%}
     write({{ stdout }}, flag, flag_length);
     printf("\n\n");
+    {% endfor %}
   }
 {% endif %}
 
