@@ -57,6 +57,10 @@ def with_challenges(f):
             for c in challenges:
                 c.VERIFY_IMAGE = args.verify_image
 
+        if getattr(args, "debug_symbols", None):
+            for c in challenges:
+                c.DEBUG_SYMBOLS = args.debug_symbols
+
         return f(args, challenges)
     return f_with_challenge
 
@@ -88,7 +92,7 @@ def handle_list(args): #pylint:disable=unused-argument
 def handle_build(args, challenges):
     for challenge in challenges:
         with challenge:
-            if args.debug:
+            if args.debug_output:
                 challenge._owns_workdir = False
 
             binary, libs, pdb = challenge.build()
@@ -146,9 +150,9 @@ def handle_verify(args, challenges):
                 signal.alarm(args.timeout)
 
             with challenge:
-                if args.debug:
+                if args.debug_output:
                     challenge._owns_workdir = False
-                verify_challenge(challenge, debug=args.debug, flag=args.flag, strace=args.strace)
+                verify_challenge(challenge, debug=args.debug_output, flag=args.flag, strace=args.strace)
             signal.alarm(0)
             print(f"SUCCEEDED: {name}")
         except NotImplementedError:
@@ -162,7 +166,7 @@ def handle_verify(args, challenges):
     return not failures
 
 def handle_apply(args):
-    if args.debug:
+    if args.debug_output:
         pwnlib.context.context.log_level = "DEBUG"
 
     yaml_dir = os.path.abspath(os.path.dirname(args.yaml))
@@ -193,7 +197,7 @@ def handle_apply(args):
                 basename=binary_name,
             )
 
-            if args.debug:
+            if args.debug_output:
                 challenge._owns_workdir = False
 
             with background_runner, challenge:
@@ -375,9 +379,16 @@ def main():
 
         subparser.add_argument(
             "-d",
-            "--debug",
+            "--debug-output",
             action="store_true",
             help="print out debugging information",
+        )
+
+        subparser.add_argument(
+            "-g",
+            "--debug-symbols",
+            action="store_true",
+            help="compile with debug symbols",
         )
 
         subparser.add_argument(
