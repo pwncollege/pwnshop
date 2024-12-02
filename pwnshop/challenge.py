@@ -219,7 +219,11 @@ class BaseChallenge:
             sysctls={"net.ipv4.ip_unprivileged_port_start": 1024},
             network_mode="bridge",
             ulimits = [ docker.types.Ulimit(name='core', soft=-1, hard=-1) ],
-            volumes = {"/tmp": {"bind": "/tmp", "mode": "rw"}, self.work_dir : {'bind': self.work_dir, 'mode': 'rw'}}
+            volumes = {
+                "/tmp": {"bind": "/tmp", "mode": "rw"},
+                self.work_dir : {'bind': self.work_dir, 'mode': 'rw'},
+                self.work_dir : {'bind': "/challenge", 'mode': 'rw'}
+            }
         )
 
         requirements = [ "gcc", "patchelf" ] + self.APT_DEPENDENCIES
