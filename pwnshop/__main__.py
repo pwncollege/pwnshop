@@ -125,13 +125,8 @@ def verify_challenge(challenge, debug=False, flag=None, strace=False):
     challenge.render()
     challenge.build()
 
-    try:
-        os.chdir(challenge.work_dir)
-        return challenge.verify(strace=strace)
-    except TypeError as e:
-        if "strace" not in str(e):
-            raise
-    return challenge.verify()
+    os.chdir(challenge.work_dir)
+    return challenge.verify(strace=strace)
 
 @with_challenges
 def handle_verify(args, challenges):
