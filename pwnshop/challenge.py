@@ -713,7 +713,20 @@ class ChallengeGroup(Challenge, register=False):
         return { c: c.render() for c in self.challenge_instances }
 
     def build(self):
+        self.ensure_containers()
         return { c: c.build() for c in self.challenge_instances }
+
+    def verify(self, **kwargs):
+        self.ensure_containers()
+
+    def ensure_containers(self):
+        super().ensure_containers()
+        for c in self.challenge_instances:
+            c.BUILD_IMAGE = self.BUILD_IMAGE
+            c._build_container = self._build_container
+            c.VERIFY_IMAGE = self.VERIFY_IMAGE
+            c._verify_container = self._verify_container
+
 
     def run_challenge(self, **kwargs): #pylint:disable=arguments-differ
         pass
