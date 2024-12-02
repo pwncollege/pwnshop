@@ -321,6 +321,7 @@ class PythonChallenge(TemplatedChallenge, register=False):
 
     @contextlib.contextmanager
     def run_challenge(self, argv=None, **kwargs):
+        kwargs.pop("strace", None)
         if not self.source:
             self.render()
 
