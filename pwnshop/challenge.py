@@ -185,10 +185,10 @@ class BaseChallenge:
             if self._verify_container:
                 self._verify_container.exec_run(f'chown {os.getuid()}:{os.getgid()} {self.work_dir}/core', user="root")
 
-    def run_sh(self, command, **kwargs):
+    def run_sh(self, command, user="hacker", **kwargs):
         self.ensure_containers()
         if self._verify_container:
-            command = f"docker exec -i {self._verify_container.name} {command}"
+            command = f"docker exec -u {user} -i {self._verify_container.name} {command}"
 
         return pwnlib.tubes.process.process(command, shell=True, **kwargs)
 
