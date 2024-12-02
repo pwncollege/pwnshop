@@ -69,7 +69,10 @@
     {% endif %}
 
     {% if challenge.win_function_authed %}
-      if (token != 0x1337) return;
+      if (token != 0x1337) {
+        puts("win_authed: uthentication check failed. No flag for you!");
+        return;
+      }
     {% endif %}
 
     {% if challenge.win_message %}puts("{{challenge.win_message}}");{% endif %}
