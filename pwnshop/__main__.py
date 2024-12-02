@@ -176,8 +176,8 @@ def handle_apply(args):
         walkthrough = c.get('walkthrough', y.get('walkthrough', args.walkthrough))
         keep_source = c.get('keep_source', y.get('keep_source', False))
         binary_name = c.get('binary_name', y.get('binary_name', name_prefix + "-" + c['id'] if name_prefix else c['id']))
-        build_image = c.get('build_image', y.get('build_image', None))
-        verify_image = c.get('verify_image', y.get('verify_image', None))
+        build_image = c.get('build_image', y.get('build_image', os.environ.get("BUILD_IMAGE", None)))
+        verify_image = c.get('verify_image', y.get('verify_image', os.environ.get("BUILD_IMAGE", None)))
 
         if args.challenges and c['id'] not in args.challenges and not any(cc.startswith(c['id']+":") for cc in args.challenges):
             continue
@@ -272,6 +272,7 @@ def main():
     command_build.add_argument(
         "--build-image",
         help="Docker image to use for building",
+        default=os.environ.get("BUILD_IMAGE", None)
     )
 
     command_apply.add_argument(
@@ -344,11 +345,13 @@ def main():
     command_verify.add_argument(
         "--build-image",
         help="Docker image to use for building",
+        default=os.environ.get("BUILD_IMAGE", None)
     )
 
     command_verify.add_argument(
         "--verify-image",
         help="Docker image to use for verification",
+        default=os.environ.get("VERIFY_IMAGE", None)
     )
 
 
