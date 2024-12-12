@@ -171,6 +171,7 @@ class BaseChallenge:
             if alarm:
                 argv = [ "/bin/timeout", "--preserve-status", "-sALRM", str(alarm) ] + argv
 
+            process.sendline("echo 127.0.0.1 challenge.localhost hacker.localhost >> /etc/hosts")
             process.sendline("echo PWNSHOP-READY")
             process.sendline(shlex.join(["exec"]+argv) + redirects)
             process.readuntil("PWNSHOP-READY\n")
