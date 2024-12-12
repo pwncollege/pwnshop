@@ -207,7 +207,7 @@ class BaseChallenge:
             img, tag = image.split(':')
         else:
             img, tag = image, "latest"
-        client.images.pull(img, tag=tag)
+        #client.images.pull(img, tag=tag)
 
         #TODO: container life is context manager
         container = client.containers.run(
