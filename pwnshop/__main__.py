@@ -201,7 +201,7 @@ def handle_apply(args):
 
                 print(f"... instantiating {c['challenge']}")
 
-                out_dir = f"{yaml_dir}/{c['id']}/_{v}"
+                out_dir = f"{yaml_dir}/{c['id']}/_{v}" if variants > 1 else f"{yaml_dir}/{c['id']}"
                 if os.path.exists(out_dir):
                     shutil.copytree(out_dir, challenge.work_dir, dirs_exist_ok=True)
                 else:
