@@ -193,6 +193,9 @@ class BaseChallenge:
 
         return pwnlib.tubes.process.process(command, shell=True, **kwargs)
 
+    def proxy_local_connection(self, port, protocol="tcp"):
+        return self.run_sh(f"socat stdio {protocol}-connect:localhost:{port}")
+
     @property
     def hostname(self):
         self.ensure_containers()
