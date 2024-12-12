@@ -226,7 +226,7 @@ class BaseChallenge:
             volumes = {
                 "/tmp": {"bind": "/tmp", "mode": "rw"},
                 self.work_dir : {'bind': self.work_dir, 'mode': 'rw'},
-                self.work_dir : {'bind': "/challenge", 'mode': 'rw'}
+                self.work_dir+"/" : {'bind': "/challenge", 'mode': 'rw'}
             }
         )
 
@@ -335,7 +335,7 @@ class PythonChallenge(TemplatedChallenge, register=False):
         with super().run_challenge(argv=argv, **kwargs) as y:
             yield y
 
-    def deploy(self, dst_dir, *, src=False, **kwargs):
+    def deploy(self, dst_dir, *, src=False, **kwargs): #pylint:disable=useless-parent-delegation
         super().deploy(dst_dir, src=src or bin, **kwargs)
 
 class Challenge(TemplatedChallenge, register=False):
@@ -371,8 +371,8 @@ class Challenge(TemplatedChallenge, register=False):
         "layout_text_walkthrough": layout_text,
     }
 
-    def __init__(self, *, seed, work_dir=None, basename=None, src_extension=".c", bin_extension="", walkthrough=False):
-        super().__init__(seed, work_dir=work_dir, basename=basename, walkthrough=walkthrough)
+    def __init__(self, *args, src_extension=".c", bin_extension="", **kwargs):
+        super().__init__(*args, **kwargs)
 
         self.binary = None
         self.libraries = None
@@ -679,7 +679,7 @@ class KernelChallenge(Challenge, register=False):
 
         yield
 
-    def run_sh(self, command, **kwargs):
+    def run_sh(self, command, user=None, **kwargs): #pylint:disable=unused-argument
         return pwnlib.tubes.process.process(["vm", "exec", command], **kwargs)
 
     def run_c(self, src, *, user=None, flags=()):
@@ -704,7 +704,7 @@ class ChallengeGroup(Challenge, register=False):
     challenges = [ ]
     challenge_names = None
 
-    def __init__(self, *args, challenge_names=None, basename=None, **kwargs):
+    def __init__(self, *args, challenge_names=None, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.challenge_names = challenge_names or self.challenge_names or [ self.basename + "-" + c.default_basename() for c in self.challenges ]
