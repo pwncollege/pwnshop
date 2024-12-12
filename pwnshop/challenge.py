@@ -250,11 +250,12 @@ class BaseChallenge:
 class TemplatedChallenge(BaseChallenge, register=False):
     context = { }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, style=True, **kwargs):
         super().__init__(*args, **kwargs)
         self.source = None
 
         self.src_path = f"{self.work_dir}/{self.basename}"
+        self._style = style
 
     @property
     def TEMPLATE_PATH(self):
@@ -284,7 +285,8 @@ class TemplatedChallenge(BaseChallenge, register=False):
             **self.context,
             **self.local_context,
         )
-        result = self.style(result)
+        if self._style:
+            result = self.style(result)
 
         self.source = result
         with open(self.src_path, "w") as o:

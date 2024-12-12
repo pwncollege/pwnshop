@@ -33,19 +33,19 @@ def with_challenges(f):
         challenges = [ ]
         for m in (args.module or [ ]) if "module" in args else [ ]:
             challenges += [
-                c(seed=args.seed, walkthrough=args.walkthrough)
+                c(seed=args.seed, walkthrough=args.walkthrough, style=not args.no_style)
                 for c in pwnshop.MODULE_LEVELS[m]
             ]
 
         if args.challenges:
             challenges += [
-                challenge_class(challenge=c)(seed=args.seed, walkthrough=args.walkthrough)
+                challenge_class(challenge=c)(seed=args.seed, walkthrough=args.walkthrough, style=not args.no_style)
                 for c in args.challenges
             ]
 
         if not challenges:
             challenges += [
-                c(seed=args.seed, walkthrough=args.walkthrough)
+                c(seed=args.seed, walkthrough=args.walkthrough, style=not args.no_style)
                 for c in pwnshop.ALL_CHALLENGES.values()
             ]
 
@@ -138,7 +138,7 @@ def handle_verify(args, challenges):
 
         try:
             if type(challenge) is type:
-                challenge = challenge(seed=args.seed, walkthrough=args.walkthrough)
+                challenge = challenge(seed=args.seed, walkthrough=args.walkthrough, style=not args.no_style)
 
             if args.timeout:
                 signal.signal(signal.SIGALRM, raise_timeout)
@@ -190,6 +190,7 @@ def handle_apply(args):
                 walkthrough=walkthrough,
                 seed=seed + v,
                 basename=binary_name,
+                style=not args.no_style,
             )
 
             if args.debug_output:
@@ -373,6 +374,13 @@ def main():
             required=False,
             default=random.randrange(0, 999999),
             help="the seed from which to generate the challenge (default: random)",
+        )
+
+        subparser.add_argument(
+            "--no-style",
+            default=False,
+            action="store_true",
+            help="disable styling during template rendering",
         )
 
         subparser.add_argument(
