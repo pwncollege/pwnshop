@@ -5,6 +5,7 @@ import shlex
 import string
 import random
 import shutil
+import socket
 import inspect
 import logging
 import subprocess
@@ -195,6 +196,16 @@ class BaseChallenge:
 
     def proxy_local_connection(self, port, protocol="tcp"):
         return self.run_sh(f"socat stdio {protocol}-connect:localhost:{port}")
+
+    @contextlib.contextmanager
+    def proxy_local_port(self, port, proxy_port=None, protocol="tcp"):
+        if not proxy_port:
+            with socket.socket() as s:
+                s.bind(('', 0))
+                proxy_port = s.getsockname()[1]
+        with self.run_sh(f"socat tcp-listen:{proxy_port},fork,reuseaddr {protocol}-connect:localhost:{port}") as o:
+            yield proxy_port
+            o.proc.send_signal(15)
 
     @property
     def hostname(self):
