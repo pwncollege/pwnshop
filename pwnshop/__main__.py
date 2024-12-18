@@ -65,19 +65,6 @@ def with_challenges(f):
     return f_with_challenge
 
 @with_challenges
-def handle_run(args, challenges):
-    if args.debug_output:
-        pwnlib.context.context.log_level = "DEBUG"
-    challenge = challenges[0]
-    challenge.render()
-    challenge.build()
-    os.chdir(challenge.work_dir)
-    with challenge.run_challenge() as r:
-        if challenge.hostname != "localhost":
-            print("PWNSHOP HOSTNAME:", challenge.hostname)
-        r.wait()
-
-@with_challenges
 def handle_render(args, challenges):
     for challenge in challenges:
         if isinstance(challenge, pwnshop.ChallengeGroup):
@@ -271,7 +258,6 @@ def main():
     command_build = commands.add_parser("build", help="build the binary code of a challenge")
     command_verify = commands.add_parser("verify", help="verify the functionality of a challenge")
     command_apply = commands.add_parser("apply", help="parse a yaml and generate the defined challenges")
-    command_run = commands.add_parser("run", help="run a challenge")
 
     command_render.add_argument(
         "--line-numbers",
@@ -363,12 +349,11 @@ def main():
         default=os.environ.get("BUILD_IMAGE", None)
     )
 
-    for command in [ command_verify, command_run ]:
-        command.add_argument(
-            "--verify-image",
-            help="Docker image to use for verification",
-            default=os.environ.get("VERIFY_IMAGE", None)
-        )
+    command_verify.add_argument(
+        "--verify-image",
+        help="Docker image to use for verification",
+        default=os.environ.get("VERIFY_IMAGE", None)
+    )
 
 
     # where to write
@@ -420,7 +405,7 @@ def main():
         )
 
     # common to all single-challenge commands
-    for subparser in [ command_render, command_build, command_verify, command_apply, command_run ]:
+    for subparser in [ command_render, command_build, command_verify, command_apply ]:
         subparser.add_argument("challenges", help="the challenges, as multiple ChallengeClassName or ModuleName:level_number. Default: all challenges.", nargs="*")
 
     parser.epilog = f"""Commands usage:\n\t{command_render.format_usage()}\t{command_build.format_usage()}\t{command_verify.format_usage()}"""
