@@ -704,6 +704,7 @@ class ChallengeGroup(Challenge, register=False):
 
     def __init__(self, *args, challenge_names=None, **kwargs):
         super().__init__(*args, **kwargs)
+        kwargs.pop("basename", None)
 
         self.challenge_names = challenge_names or self.challenge_names or [ self.basename + "-" + c.default_basename() for c in self.challenges ]
 

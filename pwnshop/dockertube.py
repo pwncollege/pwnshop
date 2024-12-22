@@ -46,7 +46,7 @@ class docker_process(pwnlib.tubes.process.process):
 		self.readuntil("PWNSHOP-READY\n")
 
 	def kill(self):
-		os.system(f"docker exec -u root {self.container_name} kill -9 -- -{self.actual_pid}")
+		pwnlib.tubes.process.process(f"docker exec -u root {self.container_name} kill -9 -- -{self.actual_pid}", shell=True).readall()
 
 	def __exit__(self, *args, **kwargs):
 		super().__exit__(*args, **kwargs)
