@@ -1,17 +1,17 @@
-import sys
 import os
 import re
-import shlex
+import sys
+import time
 import string
 import random
 import shutil
 import socket
 import inspect
 import logging
-import subprocess
 import tempfile
 import textwrap
 import contextlib
+import subprocess
 
 import black
 import docker
@@ -20,6 +20,7 @@ import pwnlib.tubes
 import pwnlib.context
 from jinja2 import Environment, PackageLoader, ChoiceLoader, contextfilter
 
+from .dockertube import docker_process
 from .register import register_challenge
 from .util import retry
 
@@ -122,11 +123,16 @@ class BaseChallenge:
     def verify(self, **kwargs):
         raise NotImplementedError()
 
-    @contextlib.contextmanager
-    def run_challenge(self, *, argv=None, close_stdin=False, flag_symlink=None, **kwargs):
+    def process_tube(self, user=1000, **kwargs):
         self.ensure_containers()
+        if self._verify_container:
+            return docker_process(container_name=self._verify_container.name, user=user, work_dir=self.work_dir, **kwargs)
+        else:
+            return pwnlib.tubes.process.process(**kwargs)
 
-        assert argv
+    @contextlib.contextmanager
+    def run_challenge(self, *, close_stdin=False, flag_symlink=None, **kwargs):
+        self.ensure_containers()
 
         if flag_symlink:
             self.run_sh(f"ln -s /flag {flag_symlink}")
@@ -146,36 +152,14 @@ class BaseChallenge:
                 for i in stdout_fds:
                     os.dup2(1, i)
 
-            process = pwnlib.tubes.process.process(argv, preexec_fn=kwargs.pop("preexec_fn", preexec_fn), **kwargs)
+            process = pwnlib.tubes.process.process(preexec_fn=kwargs.pop("preexec_fn", preexec_fn), **kwargs)
         else:
-            env = kwargs.pop("env", {})
-            alarm = kwargs.pop("alarm", None)
             stdout_fds = kwargs.pop("stdout_fds", ())
-
-            process = pwnlib.tubes.process.process([
-                "docker", "exec", "-u", "root", "-i", "-w", self.work_dir,
-                self._verify_container.name, "/bin/bash"
-            ], **kwargs)
-
             redirects = ""
             for fd in stdout_fds:
                 redirects += f" {fd}>&1" #pylint:disable=consider-using-join
 
-            for k,v in env.items():
-                kstr = k.decode('latin1') if type(k) is bytes else k
-                with open(f"{self.work_dir}/.pwnshop-env-var", "wb") as o:
-                    o.write(v.encode('latin1') if type(v) is str else v)
-                process.sendline(f"read {kstr} < {self.work_dir}/.pwnshop-env-var; export {kstr}")
-                process.clean()
-                os.unlink(f"{self.work_dir}/.pwnshop-env-var")
-
-            if alarm:
-                argv = [ "/bin/timeout", "--preserve-status", "-sALRM", str(alarm) ] + argv
-
-            process.sendline("echo 127.0.0.1 challenge.localhost hacker.localhost >> /etc/hosts")
-            process.sendline("echo PWNSHOP-READY")
-            process.sendline(shlex.join(["exec"]+argv) + redirects)
-            process.readuntil("PWNSHOP-READY\n")
+            process = docker_process(user=0, container_name = self._verify_container.name, work_dir=self.work_dir, suffix = redirects, **kwargs)
 
         if close_stdin:
             process.stdin.close()
@@ -189,13 +173,13 @@ class BaseChallenge:
 
     def run_sh(self, command, user="hacker", **kwargs):
         self.ensure_containers()
-        if self._verify_container:
-            command = f"docker exec -u {user} -i {self._verify_container.name} {command}"
+        return self.process_tube(argv=command, shell=True, user=user, **kwargs)
 
-        return pwnlib.tubes.process.process(command, shell=True, **kwargs)
-
+    @contextlib.contextmanager
     def proxy_local_connection(self, port, protocol="tcp"):
-        return self.run_sh(f"socat stdio {protocol}-connect:localhost:{port}")
+        with self.proxy_local_port(port, protocol=protocol) as pp:
+            with pwnlib.tubes.remote.remote(self.hostname, pp) as rr:
+                yield rr
 
     @contextlib.contextmanager
     def proxy_local_port(self, port, proxy_port=None, protocol="tcp"):
@@ -203,9 +187,9 @@ class BaseChallenge:
             with socket.socket() as s:
                 s.bind(('', 0))
                 proxy_port = s.getsockname()[1]
-        with self.run_sh(f"socat tcp-listen:{proxy_port},fork,reuseaddr {protocol}-connect:localhost:{port}") as o:
+        with self.run_sh(f"socat tcp-listen:{proxy_port},fork,reuseaddr {protocol}-connect:localhost:{port}"):
+            time.sleep(0.1)
             yield proxy_port
-            o.proc.send_signal(15)
 
     @property
     def hostname(self):
@@ -240,6 +224,9 @@ class BaseChallenge:
                 self.work_dir+"/" : {'bind': "/challenge", 'mode': 'rw'}
             }
         )
+
+        ret, out = container.exec_run("/bin/bash -c 'echo 127.0.0.1 challenge.localhost hacker.localhost >> /etc/hosts'", user="root")
+        assert ret == 0
 
         requirements = [ "gcc", "patchelf" ] + self.APT_DEPENDENCIES
         _, out = container.exec_run(
