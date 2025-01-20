@@ -160,6 +160,15 @@ def handle_verify(args, challenges):
 
     return not failures
 
+def get_first(where, what, *default):
+    try:
+        return next(ds[what] for ds in where if what in ds)
+    except StopIteration:
+        if default:
+            return default[0]
+        else:
+            raise KeyError(what)
+
 def handle_apply(args):
     if args.debug_output:
         pwnlib.context.context.log_level = "DEBUG"
@@ -171,22 +180,47 @@ def handle_apply(args):
     background_runner = ezmp.Task(noop=not args.mp, buffer_output=True, silence_successes=args.quiet)
 
     for c in y['challenges']:
-        seed = c.get('seed', y.get('seed', args.seed))
-        variants = args.variants or c.get('variants', y.get('variants', 1))
-        walkthrough = c.get('walkthrough', y.get('walkthrough', args.walkthrough))
-        keep_source = c.get('keep_source', y.get('keep_source', False))
-        binary_name = c.get('binary_name', y.get('binary_name', name_prefix + "-" + c['id'] if name_prefix else c['id']))
-        build_image = c.get('build_image', y.get('build_image', os.environ.get("BUILD_IMAGE", None)))
-        verify_image = c.get('verify_image', y.get('verify_image', os.environ.get("BUILD_IMAGE", None)))
+        cid = c["id"]
 
-        if args.challenges and c['id'] not in args.challenges and not any(cc.startswith(c['id']+":") for cc in args.challenges):
+        data_sources = [
+            c, c.get("auxiliary", {}).get("pwnshop", {}),
+            y, y.get("auxiliary", {}).get("pwnshop", {}),
+            vars(args),
+        ]
+
+        try:
+            class_name = get_first(data_sources, "challenge")
+        except KeyError:
+            print(f"No pwnshop class for challenge {cid}. Skipping.")
+            continue
+
+        seed = get_first(data_sources, "seed")
+        variants = get_first(data_sources, "variants")
+        walkthrough = get_first(data_sources, "walkthrough")
+        keep_source = get_first(data_sources, "keep_source", False)
+        binary_name = get_first(data_sources, "binary_name", (name_prefix + "-" + cid) if name_prefix else cid)
+        build_image = get_first(data_sources, "build_image")
+        verify_image = get_first(data_sources, "verify_image")
+        attributes = get_first(data_sources, "attributes", {})
+
+        if args.challenges and cid not in args.challenges and not any(cc.startswith(cid+":") for cc in args.challenges):
             continue
 
         for v in range(variants):
-            if args.challenges and c['id'] not in args.challenges and f"{c['id']}:{v}" not in args.challenges:
+            if args.challenges and cid not in args.challenges and f"{cid}:{v}" not in args.challenges:
                 continue
 
-            challenge = pwnshop.ALL_CHALLENGES[c['challenge']](
+            chal_class = pwnshop.ALL_CHALLENGES[class_name]
+            if attributes:
+                # is this insane?
+                chal_class = type(
+                    chal_class.__name__,
+                    (chal_class,),
+                    dict(attributes),
+                    register=False
+                )
+
+            challenge = chal_class(
                 walkthrough=walkthrough,
                 seed=seed + v,
                 basename=binary_name,
@@ -197,11 +231,11 @@ def handle_apply(args):
                 challenge._owns_workdir = False
 
             with background_runner, challenge:
-                print(f"Applying {c['id']} variant {v}.")
+                print(f"Applying {cid} variant {v} (of {variants}).")
 
-                print(f"... instantiating {c['challenge']}")
+                print(f"... instantiating {class_name}")
 
-                out_dir = f"{yaml_dir}/{c['id']}/_{v}" if variants > 1 else f"{yaml_dir}/{c['id']}"
+                out_dir = f"{yaml_dir}/{cid}/_{v}" if variants > 1 else f"{yaml_dir}/{cid}"
                 if os.path.exists(out_dir):
                     shutil.copytree(out_dir, challenge.work_dir, dirs_exist_ok=True)
                 else:
@@ -300,6 +334,7 @@ def main():
         "--variants",
         type=int,
         help="Override the number of variants specified in the yaml (useful for testing).",
+        default=1,
     )
     command_apply.add_argument(
         "-q",
