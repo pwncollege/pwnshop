@@ -325,13 +325,12 @@ class PythonChallenge(TemplatedChallenge, register=False):
         return black.format_file_contents(src, fast=False, mode=black.FileMode(line_length=120))
 
     @contextlib.contextmanager
-    def run_challenge(self, argv=None, **kwargs):
+    def run_challenge(self, argv=(), **kwargs):
         kwargs.pop("strace", None)
         if not self.source:
             self.render()
 
-        argv = argv or ["python3", self.src_path]
-        with super().run_challenge(argv=argv, **kwargs) as y:
+        with super().run_challenge(argv=[ "python3", self.src_path ] + list(argv), **kwargs) as y:
             yield y
 
     def deploy(self, dst_dir, *, src=False, **kwargs): #pylint:disable=useless-parent-delegation
