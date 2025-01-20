@@ -228,12 +228,16 @@ class BaseChallenge:
         ret, out = container.exec_run("/bin/bash -c 'echo 127.0.0.1 challenge.localhost hacker.localhost >> /etc/hosts'", user="root")
         assert ret == 0
 
-        requirements = [ "gcc", "patchelf" ] + self.APT_DEPENDENCIES
+        self._container_dependencies(container, self.APT_DEPENDENCIES)
+        container.reload()
+        return container
+
+    @staticmethod
+    def _container_dependencies(container, requirements):
         _, out = container.exec_run(
             f"""/bin/bash -c 'dpkg -l | cut -f3 -d" " | grep -E "^({ "|".join(requirements) })$"'""",
             user="root"
         )
-
         missing = set(requirements) - set(out.decode().strip().split("\n"))
 
         if missing:
@@ -242,9 +246,6 @@ class BaseChallenge:
                 print("DEPENDENCY INSTALL ERROR:")
                 print(out.decode('latin1'))
             assert ret == 0, out
-
-        container.reload()
-        return container
 
     def deploy(self, dst_dir, *, bin=True, src=True, libs=True): #pylint:disable=redefined-builtin
         pass
@@ -464,6 +465,11 @@ class Challenge(TemplatedChallenge, register=False):
             self.binary = f.read()
 
         return self.binary, self.libraries, None
+
+    def _create_container(self, *args, **kwargs):
+        c = super()._create_container(*args, **kwargs)
+        self._container_dependencies(c, [ "gcc", "patchelf" ])
+        return c
 
     @contextlib.contextmanager
     def run_challenge(
