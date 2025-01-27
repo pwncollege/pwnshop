@@ -1,9 +1,9 @@
 import pathlib
 import psutil
 
-# This function retrieves the path of the process that is on the
+# This function determines the process that is on the
 # other side of the file descriptor we pass in.
-def peer_path(fd):
+def peer_process_of(fd):
     server_connection = next(
         connection
         for connection in psutil.Process().connections()
@@ -15,14 +15,13 @@ def peer_path(fd):
         if connection.raddr == server_connection.laddr
         and connection.laddr == server_connection.raddr
     )
-    client_process = psutil.Process(client_connection.pid)
-    return client_process.exe()
+    return psutil.Process(client_connection.pid)
 
 # This function returns the filename of a peer process for a given
 # file descriptor, verifying that the path is owned by root and
 # not open to shenanigans.
-def trusted_peer_name(fd):
-    client_path = pathlib.Path(peer_path(fd))
+def name_of_program_for(process):
+    client_path = pathlib.Path(process.exe())
     for p in reversed(client_path.parents):
         if not p.owner() == "root":
             return None
