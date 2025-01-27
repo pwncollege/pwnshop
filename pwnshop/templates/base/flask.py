@@ -20,6 +20,6 @@ os.environ["PATH"] = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/b
 {% endif %}
 app.secret_key = os.urandom(8)
 {% if challenge.flask_host %}
-app.config['SERVER_NAME'] = f"{{challenge.flask_host}}:{{challenge.flask_port or 80}}"
+app.config['SERVER_NAME'] = "{{challenge.flask_host}}:{{challenge.flask_port or 80}}"
 {% endif %}
-app.run("{{challenge.flask_host or "0.0.0.0"}}", {{challenge.flask_port}})
+app.run("{{challenge.host_override or challenge.flask_host or "0.0.0.0"}}", {{challenge.flask_port}})
