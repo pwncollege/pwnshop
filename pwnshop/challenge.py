@@ -173,7 +173,7 @@ class BaseChallenge:
 
     def run_sh(self, command, user="hacker", **kwargs):
         self.ensure_containers()
-        return self.process_tube(argv=command, shell=True, user=user, **kwargs)
+        return self.process_tube(argv=command, shell=type(command) in (str, bytes), user=user, **kwargs)
 
     @contextlib.contextmanager
     def proxy_local_connection(self, port, protocol="tcp"):

@@ -38,7 +38,7 @@ class docker_process(pwnlib.tubes.process.process):
 		self.actual_pid = int(self.readline().strip())
 
 		if alarm:
-			self.sendline(f"( sleep {alarm}; kill -ALRM {self.actual_pid} )")
+			self.sendline(f"( sleep {alarm}; kill -ALRM {self.actual_pid} ) &")
 
 		self.sendline("echo PWNSHOP-READY")
 		actual_cmd = argv if shell else "exec " + shlex.join(argv)
