@@ -1,3 +1,4 @@
+import pathlib
 import psutil
 
 # This function retrieves the path of the process that is on the
@@ -21,7 +22,7 @@ def peer_path(fd):
 # file descriptor, verifying that the path is owned by root and
 # not open to shenanigans.
 def trusted_peer_name(fd):
-    client_path = peer_path(fd)
+    client_path = pathlib.Path(peer_path(fd))
     for p in reversed(client_path.parents):
         if not p.owner() == "root":
             return None
