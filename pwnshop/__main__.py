@@ -194,7 +194,7 @@ def handle_apply(args):
             print(f"No pwnshop class for challenge {cid}. Skipping.")
             continue
 
-        seed = get_first(data_sources, "seed")
+        seed = random.randrange(0, 13371337)#get_first(data_sources, "seed")
         variants = get_first(data_sources, "variants")
         walkthrough = get_first(data_sources, "walkthrough")
         keep_source = get_first(data_sources, "keep_source", False)
