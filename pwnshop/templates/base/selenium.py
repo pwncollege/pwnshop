@@ -21,7 +21,7 @@ os.environ["PATH"] = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/b
 
 options = FirefoxOptions()
 options.add_argument("--headless")
-service = FirefoxService(log_path="/dev/null")
+service = FirefoxService(log_path="/dev/null", executable_path=shutils.which("geckodriver"))
 browser = webdriver.Firefox(service=service, options=options)
 atexit.register(browser.quit)
 
