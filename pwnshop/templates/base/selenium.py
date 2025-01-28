@@ -1,5 +1,6 @@
 #!/opt/pwn.college/python
 
+import shutil
 import psutil
 import urllib
 import atexit
@@ -21,7 +22,7 @@ os.environ["PATH"] = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/b
 
 options = FirefoxOptions()
 options.add_argument("--headless")
-service = FirefoxService(log_path="/dev/null", executable_path="/usr/local/bin/geckodriver")
+service = FirefoxService(log_path="/dev/null", executable_path=shutil.which("geckodriver"))
 browser = webdriver.Firefox(service=service, options=options)
 atexit.register(browser.quit)
 
