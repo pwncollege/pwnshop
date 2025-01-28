@@ -62,6 +62,11 @@ browser.find_element(By.NAME, "{{k}}").send_keys({{v}})
 browser.find_element(By.NAME, "submit").submit()
 {% endif %}
 
+{% if challenge.print_page %}
+print("Retrieved the following HTML:")
+print(browser.page_source)
+{% endif %}
+
 {% if challenge.reward_alert %}
 try:
     WebDriverWait(browser, 1).until(EC.alert_is_present())
