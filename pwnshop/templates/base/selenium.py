@@ -49,10 +49,11 @@ if url_parsed.port not in { None, {{challenge.port or 80}} }:
 {% endif %}
 
 {% if challenge.flag_in_query %}
+print(f"Visiting {challenge_url} (with the flag).")
 challenge_url += f"""?flag={open("/flag").read().strip()}"""
-{% endif %}
-
+{% else %}
 print(f"Visiting {challenge_url}")
+{% endif %}
 browser.get(challenge_url)
 
 {% if challenge.form_fields %}
