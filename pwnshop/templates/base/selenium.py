@@ -66,6 +66,11 @@ browser.find_element(By.NAME, "submit").submit()
 
 {% if challenge.print_page %}
 print("Retrieved the following HTML:")
+{% if challenge.ensure_html %}
+if "<html" not in browser.page_source.lower():
+    print("Doesn't look like we retrieved an HTML page...")
+    sys.exit(1)
+{% endif %}
 print(browser.page_source)
 {% endif %}
 
