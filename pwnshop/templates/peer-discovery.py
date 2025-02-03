@@ -6,7 +6,7 @@ import psutil
 def peer_process_of(fd):
     server_connection = next(
         connection
-        for connection in psutil.Process().connections()
+        for connection in psutil.Process().net_connections()
         if connection.fd == fd
     )
     client_connection = next(
@@ -23,8 +23,8 @@ def peer_process_of(fd):
 def name_of_program_for(process):
     client_path = pathlib.Path(process.exe())
     for p in reversed(client_path.parents):
-        if not p.owner() == "root":
+        if p.owner() != "root":
             return None
-        if p in ("/home", "/tmp", "/var/tmp", "/dev/shm"):
+        if str(p) in ("/home", "/tmp", "/var/tmp", "/dev/shm"):
             return None
     return client_path.stem
