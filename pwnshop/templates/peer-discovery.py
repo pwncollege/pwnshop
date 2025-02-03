@@ -6,7 +6,7 @@ import psutil
 def peer_process_of(fd):
     server_connection = next(
         connection
-        for connection in psutil.Process().connections()
+        for connection in psutil.Process().net_connections()
         if connection.fd == fd
     )
     client_connection = next(
