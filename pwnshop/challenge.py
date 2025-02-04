@@ -14,15 +14,14 @@ import contextlib
 import subprocess
 
 import black
-import docker
 import pyastyle
 import pwnlib.tubes
 import pwnlib.context
 from jinja2 import Environment, PackageLoader, ChoiceLoader, contextfilter
 
-from .dockertube import docker_process
 from .register import register_challenge
 from .util import retry
+from .environments import BareEnvironment, DockerEnvironment
 
 pwnlib.context.context.arch = "x86_64"
 pwnlib.context.context.encoding = "latin"
@@ -50,22 +49,29 @@ def layout_text_walkthrough(context, text):
     return layout_text(text)
 
 class BaseChallenge:
-    BUILD_IMAGE = None
-    VERIFY_IMAGE = None
+    IMAGE = None
     APT_DEPENDENCIES = []
 
-    def __init__(self, seed, work_dir=None, walkthrough=False, basename=None):
-        self.work_dir = tempfile.mkdtemp(prefix='pwnshop-') if work_dir is None else work_dir
+    def __init__(
+        self, seed=None,
+        env=None, work_dir=None, walkthrough=False, basename=None
+    ):
+
+        if env:
+            self.env = env
+        elif self.IMAGE:
+            self.env = DockerEnvironment(self.IMAGE)
+        else:
+            self.env = BareEnvironment()
+        self.work_dir = work_dir or self.env.work_dir or tempfile.mkdtemp(prefix='pwnshop-')
+
         if os.path.exists(self.work_dir):
             self._owns_workdir = False
         else:
             self._owns_workdir = True
             os.makedirs(self.work_dir)
 
-        self._build_container = None
-        self._verify_container = None
-
-        self.seed = seed
+        self.seed = seed or random.randrange(13371337)
         self.random = random.Random(seed)
         self.walkthrough = walkthrough
 
@@ -88,24 +94,11 @@ class BaseChallenge:
     def random_word(self, length, vocabulary=string.ascii_lowercase):
         return "".join(self.random.choice(vocabulary) for _ in range(length))
 
-    def ensure_containers(self):
-        if not self._build_container:
-            self._build_container = self._create_container(self.BUILD_IMAGE)
-        if not self._verify_container:
-            self._verify_container = self._create_container(self.VERIFY_IMAGE)
-
     def cleanup(self):
-        if self._build_container:
-            self._build_container.kill()
-            self._build_container = None
-        if self._verify_container:
-            self._verify_container.kill()
-            self._verify_container = None
         if self._owns_workdir:
             shutil.rmtree(self.work_dir)
 
     def __enter__(self):
-        self.ensure_containers()
         return self
 
     def __exit__(self, exc_type, value, tb):
@@ -115,7 +108,7 @@ class BaseChallenge:
         pass
 
     def build(self):
-        pass
+        self.env.install(self.APT_DEPENDENCIES)
 
     def flaky_verify(self, num_attempts=4, timeout=300, **kwargs):
         retry(num_attempts, timeout=timeout)(self.verify)(**kwargs)
@@ -123,43 +116,19 @@ class BaseChallenge:
     def verify(self, **kwargs):
         raise NotImplementedError()
 
-    def process_tube(self, user=1000, **kwargs):
-        self.ensure_containers()
-        if self._verify_container:
-            return docker_process(container_name=self._verify_container.name, user=user, work_dir=self.work_dir, **kwargs)
-        else:
-            return pwnlib.tubes.process.process(**kwargs)
-
     @contextlib.contextmanager
     def run_challenge(self, *, close_stdin=False, flag_symlink=None, **kwargs):
-        self.ensure_containers()
-
         if flag_symlink:
             self.run_sh(f"ln -s /flag {flag_symlink}")
 
-        if self._verify_container:
-            ret, _ = self._verify_container.exec_run(f"""/bin/bash -c 'echo -n "{self.flag.decode()}" | tee /flag'""", user="root")
-            assert ret == 0
-            _, out = self._verify_container.exec_run("cat /flag", user="root")
-            assert out == self.flag
-        else:
-            with open("/flag", "rb") as f:
-                assert f.read() == self.flag
+        self.env.write_file("/flag", self.flag, "root:root", user=0)
 
-        if not self._verify_container:
-            stdout_fds = kwargs.pop("stdout_fds", ())
-            def preexec_fn():
-                for i in stdout_fds:
-                    os.dup2(1, i)
+        # stdout_fds = kwargs.pop("stdout_fds", ())
+        # def preexec_fn():
+        #   for i in stdout_fds:
+        #       os.dup2(1, i)
 
-            process = pwnlib.tubes.process.process(preexec_fn=kwargs.pop("preexec_fn", preexec_fn), **kwargs)
-        else:
-            stdout_fds = kwargs.pop("stdout_fds", ())
-            redirects = ""
-            for fd in stdout_fds:
-                redirects += f" {fd}>&1" #pylint:disable=consider-using-join
-
-            process = docker_process(user=0, container_name = self._verify_container.name, work_dir=self.work_dir, suffix = redirects, **kwargs)
+        process = self.env.process(user=0, **kwargs)
 
         if close_stdin:
             process.stdin.close()
@@ -168,12 +137,18 @@ class BaseChallenge:
             yield process
         finally:
             process.kill()
-            if self._verify_container:
-                self._verify_container.exec_run(f'chown {os.getuid()}:{os.getgid()} {self.work_dir}/core', user="root")
+            self.env.system(
+                f'chown {os.getuid()}:{os.getgid()} {self.work_dir}/core',
+                user="root"
+            )
 
     def run_sh(self, command, user="hacker", **kwargs):
-        self.ensure_containers()
-        return self.process_tube(argv=command, shell=type(command) in (str, bytes), user=user, **kwargs)
+        return self.env.process(
+            argv=command,
+            shell=type(command) in (str, bytes),
+            user=user,
+            **kwargs
+        )
 
     @contextlib.contextmanager
     def proxy_local_connection(self, port, protocol="tcp"):
@@ -193,59 +168,7 @@ class BaseChallenge:
 
     @property
     def hostname(self):
-        self.ensure_containers()
-        return "localhost" if not self._verify_container else self._verify_container.attrs['NetworkSettings']['IPAddress']
-
-    def _create_container(self, image=None):
-        if not image:
-            return None
-
-        client = docker.from_env()
-        if ":" in image:
-            img, tag = image.split(':')
-        else:
-            img, tag = image, "latest"
-        #client.images.pull(img, tag=tag)
-
-        #TODO: container life is context manager
-        container = client.containers.run(
-            img + ':' + tag,
-            'sleep 300',
-            auto_remove=True,
-            detach=True,
-            cap_add=["SYS_PTRACE"],
-            security_opt=["seccomp=unconfined"],
-            sysctls={"net.ipv4.ip_unprivileged_port_start": 1024},
-            network_mode="bridge",
-            ulimits = [ docker.types.Ulimit(name='core', soft=-1, hard=-1) ],
-            volumes = {
-                "/tmp": {"bind": "/tmp", "mode": "rw"},
-                self.work_dir : {'bind': self.work_dir, 'mode': 'rw'},
-                self.work_dir+"/" : {'bind': "/challenge", 'mode': 'rw'}
-            }
-        )
-
-        ret, out = container.exec_run("/bin/bash -c 'echo 127.0.0.1 challenge.localhost hacker.localhost >> /etc/hosts'", user="root")
-        assert ret == 0
-
-        self._container_dependencies(container, self.APT_DEPENDENCIES)
-        container.reload()
-        return container
-
-    @staticmethod
-    def _container_dependencies(container, requirements):
-        _, out = container.exec_run(
-            f"""/bin/bash -c 'dpkg -l | cut -f3 -d" " | grep -E "^({ "|".join(requirements) })$"'""",
-            user="root"
-        )
-        missing = set(requirements) - set(out.decode().strip().split("\n"))
-
-        if missing:
-            ret, out = container.exec_run(f'/bin/bash -c "apt-get update && apt-get install -y {" ".join(missing)}"', user="root")
-            if ret != 0:
-                print("DEPENDENCY INSTALL ERROR:")
-                print(out.decode('latin1'))
-            assert ret == 0, out
+        return self.env.hostname
 
     def deploy(self, dst_dir, *, bin=True, src=True, libs=True): #pylint:disable=redefined-builtin
         pass
@@ -317,6 +240,8 @@ class PythonChallenge(TemplatedChallenge, register=False):
         return self.src_path
 
     def build(self):
+        super().build()
+
         if not self.source:
             self.render()
         os.chmod(self.src_path, 0o4755)
@@ -444,31 +369,24 @@ class Challenge(TemplatedChallenge, register=False):
         return cmd
 
     def build(self):
+        super().build()
+
+        self.env.install([ "gcc", "patchelf" ])
+
         if not self.source:
             self.render()
-        self.ensure_containers()
         cmd = self.build_compiler_cmd()
 
-        if self._build_container:
-            ret, out = self._build_container.exec_run(cmd)
-            if ret != 0:
-                print("BUILD ERROR:")
-                print(out.decode('latin1'))
-            assert ret == 0, out
-            self.libraries = self.pin_libraries() if self.PIN_LIBRARIES else []
-        else:
-            subprocess.check_output(cmd)
-            self.libraries = None
+        build_process = self.env.process(cmd)
+        build_process.wait()
+        if build_process.poll() != 0:
+            print(f"BUILD ERROR ({self.env=}):")
+            print(build_process.readall().decode('latin1'))
 
-        with open(self.bin_path, 'rb') as f:
-            self.binary = f.read()
+        self.libraries = self.pin_libraries() if self.PIN_LIBRARIES else []
+        self.binary = self.env.read_file(self.bin_path)
 
         return self.binary, self.libraries, None
-
-    def _create_container(self, *args, **kwargs):
-        c = super()._create_container(*args, **kwargs)
-        self._container_dependencies(c, [ "gcc", "patchelf" ])
-        return c
 
     @contextlib.contextmanager
     def run_challenge(
@@ -496,32 +414,33 @@ class Challenge(TemplatedChallenge, register=False):
             yield y
 
     def pin_libraries(self):
-        assert self._build_container
-
-        ret, out = self._build_container.exec_run("ldd " + self.bin_path)
-        assert ret == 0
-        lib_paths = filter(lambda x: '/' in x, out.decode().split())
+        ldd = self.env.process("ldd " + self.bin_path, shell=True)
+        ldd.wait()
+        assert ldd.poll() == 0
+        lib_paths = filter(lambda x: '/' in x, ldd.read().decode().split())
 
         libs = [ ]
         os.makedirs(f"{self.lib_path}", exist_ok=True)
         for p in lib_paths:
             lib_name = os.path.basename(p)
-            self._build_container.exec_run(f'cp {p} {self.lib_path}/{lib_name}')
+            self.env.system(f'cp {p} {self.lib_path}/{lib_name}')
 
-            self._build_container.exec_run(f'chmod 0766 {self.lib_path}/{lib_name}')
-            self._build_container.exec_run(f'chown {os.getuid()}:{os.getgid()} {self.lib_path}/{lib_name}')
+            self.env.system(f'chmod 0766 {self.lib_path}/{lib_name}')
+            self.env.system(f'chown {os.getuid()}:{os.getgid()} {self.lib_path}/{lib_name}')
 
             with open(f'{self.lib_path}/{lib_name}', 'rb') as f:
                 libs.append((lib_name, f.read()))
             if self.DEPLOYMENT_LIB_PATH and "ld-linux" in lib_name:
-                ret, out = self._build_container.exec_run(
+                self.env.finished_process(
                     f'patchelf --set-interpreter {self.DEPLOYMENT_LIB_PATH}/{lib_name} ' + self.bin_path,
-                    workdir=self.work_dir
+                    shell=True,
+                    check=True
                 )
             elif self.DEPLOYMENT_LIB_PATH:
-                self._build_container.exec_run(
+                self.env.finished_process(
                     f'patchelf --replace-needed {lib_name} {self.DEPLOYMENT_LIB_PATH}/{lib_name} ' + self.bin_path,
-                    workdir=self.work_dir
+                    shell=True,
+                    check=True
                 )
 
         # the interpreter is set to */challenge*/lib/ld-blah
@@ -601,7 +520,7 @@ class WindowsChallenge(Challenge, register=False):
 
         cmd = self.build_compiler_cmd()
 
-        if self.BUILD_IMAGE is None:
+        if not isinstance(self.env, DockerEnvironment):
             with tempfile.TemporaryDirectory(prefix='pwnshop-') as workdir:
                 src_path = f"{workdir}/{self.__class__.__name__.lower()}.c"
 
@@ -723,20 +642,7 @@ class ChallengeGroup(Challenge, register=False):
         return { c: c.render() for c in self.challenge_instances }
 
     def build(self):
-        self.ensure_containers()
         return { c: c.build() for c in self.challenge_instances }
-
-    def verify(self, **kwargs):
-        self.ensure_containers()
-
-    def ensure_containers(self):
-        super().ensure_containers()
-        for c in self.challenge_instances:
-            c.BUILD_IMAGE = self.BUILD_IMAGE
-            c._build_container = self._build_container
-            c.VERIFY_IMAGE = self.VERIFY_IMAGE
-            c._verify_container = self._verify_container
-
 
     def run_challenge(self, **kwargs): #pylint:disable=arguments-differ
         pass

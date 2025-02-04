@@ -31,31 +31,35 @@ def with_challenges(f):
     @functools.wraps(f)
     def f_with_challenge(args):
         challenges = [ ]
+        kwargs = {
+            "seed": args.seed,
+            "walkthrough": args.walkthrough,
+            "style": not args.no_style,
+        }
+
+        if args.debug_output:
+            pwnlib.context.context.log_level = "DEBUG"
+
+        if args.image:
+            kwargs["environment"] = pwnshop.DockerEnvironment(args.image)
+
         for m in (args.module or [ ]) if "module" in args else [ ]:
             challenges += [
-                c(seed=args.seed, walkthrough=args.walkthrough, style=not args.no_style)
+                c(**kwargs)
                 for c in pwnshop.MODULE_LEVELS[m]
             ]
 
         if args.challenges:
             challenges += [
-                challenge_class(challenge=c)(seed=args.seed, walkthrough=args.walkthrough, style=not args.no_style)
+                challenge_class(challenge=c)(**kwargs)
                 for c in args.challenges
             ]
 
         if not challenges:
             challenges += [
-                c(seed=args.seed, walkthrough=args.walkthrough, style=not args.no_style)
+                c(**kwargs)
                 for c in pwnshop.ALL_CHALLENGES.values()
             ]
-
-        if getattr(args, "build_image", None):
-            for c in challenges:
-                c.BUILD_IMAGE = args.build_image
-
-        if getattr(args, "verify_image", None):
-            for c in challenges:
-                c.VERIFY_IMAGE = args.verify_image
 
         if getattr(args, "debug_symbols", None):
             for c in challenges:
@@ -199,8 +203,7 @@ def handle_apply(args):
         walkthrough = get_first(data_sources, "walkthrough")
         keep_source = get_first(data_sources, "keep_source", False)
         binary_name = get_first(data_sources, "binary_name", (name_prefix + "-" + cid) if name_prefix else cid)
-        build_image = get_first(data_sources, "build_image")
-        verify_image = get_first(data_sources, "verify_image")
+        image = get_first(data_sources, "image", None) or get_first(data_sources, "build_image", None) or get_first(data_sources, "verify_image", None)
         attributes = get_first(data_sources, "attributes", {})
 
         if args.challenges and cid not in args.challenges and not any(cc.startswith(cid+":") for cc in args.challenges):
@@ -220,10 +223,13 @@ def handle_apply(args):
                     register=False
                 )
 
+            env = pwnshop.DockerEnvironment(image) if image else None
+
             challenge = chal_class(
                 walkthrough=walkthrough,
                 seed=seed + v,
                 basename=binary_name,
+                env=env,
                 style=not args.no_style,
             )
 
@@ -242,11 +248,6 @@ def handle_apply(args):
                     os.makedirs(out_dir)
 
                 os.chdir(challenge.work_dir)
-
-                if build_image:
-                    challenge.BUILD_IMAGE = build_image
-                if verify_image:
-                    challenge.VERIFY_IMAGE = verify_image
 
                 if args.no_render and not args.no_build:
                     print(f"... using existing source at {challenge.src_path}")
@@ -286,6 +287,11 @@ def main():
         help="a path glob to import challenges from (either /path/to/module.py or /path/to/package/ or /some/glob/*, but avoid shell-expansion for the latter!). Defaults to cwd.",
         default=os.getcwd()
     )
+    parser.add_argument(
+        "--image",
+        help="A docker image to use for building and verifying",
+        default=None,
+    )
     commands = parser.add_subparsers(help="the action for pwnshop to perform", required=True, dest="ACTION")
     command_render = commands.add_parser("list", help="list known challenges")
     command_render = commands.add_parser("render", help="render the source code of a challenge")
@@ -302,12 +308,6 @@ def main():
     command_build.add_argument(
         "--lpath",
         help="Location to store needed library files",
-    )
-
-    command_build.add_argument(
-        "--build-image",
-        help="Docker image to use for building",
-        default=os.environ.get("BUILD_IMAGE", None)
     )
 
     command_apply.add_argument(

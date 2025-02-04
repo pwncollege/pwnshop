@@ -62,7 +62,7 @@ class Shell1604(ShellExample):
     The same example, built using Ubuntu 16.04.
     """
 
-    BUILD_IMAGE = "ubuntu:16.04"
+    IMAGE = "ubuntu:16.04"
     APT_DEPENDENCIES = [ "libcapstone-dev" ]
     PIN_LIBRARIES = True
 
@@ -77,7 +77,7 @@ class Shell1604InVitu(Shell1604):
     The same example, built using Ubuntu 16.04 and verified in the same container, without the need for library pinning.
     """
 
-    BUILD_IMAGE = "ubuntu:16.04"
+    IMAGE = "ubuntu:16.04"
     VERIFY_IMAGE = "ubuntu:16.04"
     PIN_LIBRARIES = False
 
