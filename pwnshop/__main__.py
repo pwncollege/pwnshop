@@ -171,7 +171,7 @@ def get_first(where, what, *default):
         if default:
             return default[0]
         else:
-            raise KeyError(what)
+            raise KeyError(what) #pylint:disable=raise-missing-from
 
 def handle_apply(args):
     if args.debug_output:
