@@ -21,3 +21,5 @@ jobs:
       - name: test
         run: |
           tests/test.sh
+          tests/test_apply.sh
+          pytest -v tests
