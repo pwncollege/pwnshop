@@ -13,4 +13,11 @@ void __attribute__((constructor)) disable_aslr(int argc, char **argv, char **env
     {% endif %}
     execve("/proc/self/exe", argv, envp);
   }
+  else {
+    // an `execve` after `prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)` gives user
+    // E{U,G}ID instead of root (even though we have root capabilities).
+    // so we just force the expected E{U,G}ID:
+    setresuid(0, 0, 0);
+    setresgid(0, 0, 0);
+  }
 }
