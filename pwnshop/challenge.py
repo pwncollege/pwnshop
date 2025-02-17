@@ -199,7 +199,7 @@ class TemplatedChallenge(BaseChallenge, register=False):
     def style(self, src):
         return src
 
-    def render(self):
+    def make_jinja_env(self):
         loader_list = [
             PackageLoader(__name__, ""),
             PackageLoader(__name__, "templates"),
@@ -213,6 +213,10 @@ class TemplatedChallenge(BaseChallenge, register=False):
         env = Environment(loader=ChoiceLoader(loader_list), trim_blocks=True)
         env.filters["layout_text"] = layout_text
         env.filters["layout_text_walkthrough"] = layout_text_walkthrough
+        return env
+
+    def render(self):
+        env = self.make_jinja_env()
         template = env.get_template(self.TEMPLATE_PATH)
         result = template.render(
             challenge=self,
