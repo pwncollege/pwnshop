@@ -278,7 +278,6 @@ class Challenge(TemplatedChallenge, register=False):
     COMPILER = "gcc"
     PIE = None
     RELRO = "full"
-    MASM_FLAG = "-masm=intel"
     OPTIMIZATION_FLAG = "-O0"
     CANARY = None
     FRAME_POINTER = None
@@ -362,8 +361,8 @@ class Challenge(TemplatedChallenge, register=False):
         if self.STRIP:
             cmd.append("-s")
 
-        if self.MASM_FLAG:
-            cmd.append(self.MASM_FLAG)
+        if "-" not in self.COMPILER or "x86" in self.COMPILER:
+            cmd.append("-masm=intel")
         if self.OPTIMIZATION_FLAG:
             cmd.append(self.OPTIMIZATION_FLAG)
 
