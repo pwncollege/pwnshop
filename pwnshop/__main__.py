@@ -35,6 +35,7 @@ def with_challenges(f):
             "seed": args.seed,
             "walkthrough": args.walkthrough,
             "style": not args.no_style,
+            "work_dir": args.workdir,
         }
 
         if args.debug_output:
@@ -125,7 +126,7 @@ def handle_verify(args, challenges):
 
         try:
             if type(challenge) is type:
-                challenge = challenge(seed=args.seed, walkthrough=args.walkthrough, style=not args.no_style)
+                challenge = challenge(seed=args.seed, walkthrough=args.walkthrough, style=not args.no_style, work_dir=args.workdir)
 
             if args.timeout:
                 signal.signal(signal.SIGALRM, raise_timeout)
@@ -269,6 +270,12 @@ def main():
         help="A docker image to use for building and verifying",
         default=None,
     )
+    parser.add_argument(
+        "-D",
+        "--workdir",
+        help="The working directory to use",
+        default=None,
+    )
     commands = parser.add_subparsers(help="the action for pwnshop to perform", required=True, dest="ACTION")
     command_render = commands.add_parser("list", help="list known challenges")
     command_render = commands.add_parser("render", help="render the source code of a challenge")
@@ -394,7 +401,6 @@ def main():
         )
 
         subparser.add_argument(
-            "-w",
             "--walkthrough",
             action="store_true",
             help="enable challenge walkthrough mode",
