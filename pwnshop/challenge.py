@@ -100,8 +100,15 @@ class BaseChallenge:
         with open("/flag", "rb") as f:
             return f.read()
 
-    def random_word(self, length, vocabulary=string.ascii_lowercase):
-        return "".join(self.random.choice(vocabulary) for _ in range(length))
+    def random_word(
+        self, length,
+        start_vocabulary=string.ascii_lowercase,
+        vocabulary=string.ascii_lowercase
+    ):
+        return (
+            self.random.choice(start_vocabulary) +
+            "".join(self.random.choice(vocabulary) for _ in range(length-1))
+        )
 
     def cleanup(self):
         if self._owns_workdir:
