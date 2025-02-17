@@ -215,13 +215,7 @@ def handle_apply(args):
 
             chal_class = pwnshop.ALL_CHALLENGES[class_name]
             if attributes:
-                # is this insane?
-                chal_class = type(
-                    chal_class.__name__,
-                    (chal_class,),
-                    dict(attributes),
-                    register=False
-                )
+                chal_class = chal_class.duplicate(attributes=attributes)
 
             env = pwnshop.DockerEnvironment(image) if image else None
 

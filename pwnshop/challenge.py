@@ -86,6 +86,14 @@ class BaseChallenge:
         if register and getattr(cls_module, "PWNSHOP_AUTOREGISTER", True):
             register_challenge(cls)
 
+    @classmethod
+    def duplicate_class(cls, attributes=None, register=False):
+        return type(
+            cls.__name__, (cls,),
+            dict(attributes) or {},
+            register=register
+        )
+
     @property
     def flag(self):
         with open("/flag", "rb") as f:
