@@ -185,8 +185,8 @@ class BaseChallenge:
 class TemplatedChallenge(BaseChallenge, register=False):
     context = { }
 
-    def __init__(self, *args, style=True, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, style=True, **kwargs):
+        super().__init__(**kwargs)
         self.source = None
 
         self.src_path = f"{self.work_dir}/{self.basename}"
@@ -306,8 +306,8 @@ class Challenge(TemplatedChallenge, register=False):
         "layout_text_walkthrough": layout_text,
     }
 
-    def __init__(self, *args, src_extension=".c", bin_extension="", **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, src_extension=".c", bin_extension="", **kwargs):
+        super().__init__(**kwargs)
 
         self.binary = None
         self.libraries = None
