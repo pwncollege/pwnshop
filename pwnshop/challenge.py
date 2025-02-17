@@ -54,7 +54,8 @@ class BaseChallenge:
 
     def __init__(
         self, seed=None,
-        env=None, work_dir=None, walkthrough=False, basename=None
+        env=None, work_dir=None, walkthrough=False, basename=None,
+        **kwargs #pylint:disable=unused-argument
     ):
 
         if env:
@@ -630,31 +631,37 @@ class KernelChallenge(Challenge, register=False):
         return int(data, 16)
 
 
-class ChallengeGroup(Challenge, register=False):
-    challenges = [ ]
-    challenge_names = None
+class ChallengeGroup(BaseChallenge, register=False):
+    challenges = { }
 
-    def __init__(self, *args, challenge_names=None, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         kwargs.pop("basename", None)
+        kwargs.pop("work_dir", None)
+        kwargs.pop("env", None)
 
-        self.challenge_names = challenge_names or self.challenge_names or [ self.basename + "-" + c.default_basename() for c in self.challenges ]
+        self.challenge_instances = {
+            name: cls(
+                env=self.env, work_dir=self.work_dir, basename=name, **kwargs
+            ) for name,cls in self.challenges.items()
+        }
 
-        kwargs.pop("workdir", None)
-        self.challenge_instances = [
-            challenge(*args, work_dir=self.work_dir, basename=name, **kwargs)
-            for challenge,name in zip(self.challenges, self.challenge_names)
-        ]
+        for n,c in self.challenge_instances.items():
+            setattr(self, n, c)
 
     def render(self):
-        return { c: c.render() for c in self.challenge_instances }
+        return { n: c.render() for n,c in self.challenge_instances.items() }
 
     def build(self):
-        return { c: c.build() for c in self.challenge_instances }
+        return { n: c.build() for n,c in self.challenge_instances.items() }
 
     def run_challenge(self, **kwargs): #pylint:disable=arguments-differ
         pass
 
     def deploy(self, dst_dir, **kwargs):
-        for c in self.challenge_instances:
+        for c in self.challenge_instances.values():
             c.deploy(dst_dir, **kwargs)
+
+    def verify(self, **kwargs):
+        for c in self.challenge_instances.values():
+            c.verify(**kwargs)

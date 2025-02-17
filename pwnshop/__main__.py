@@ -72,20 +72,17 @@ def with_challenges(f):
 def handle_render(args, challenges):
     for challenge in challenges:
         if isinstance(challenge, pwnshop.ChallengeGroup):
-            for challenge,src in challenge.render().items():
-                src = challenge.render()
+            for name,src in challenge.render().items():
                 for i, line in enumerate(src.splitlines()):
-                    args.out.write(f"{os.path.basename(challenge.src_path)}:{i + 1}\t{line}\n")
-                args.out.write("\n")
+                    print(f"{name}:{i + 1}\t{line}")
+                print()
         else:
             src = challenge.render()
             if not args.line_numbers:
-                args.out.write(src+"\n")
+                print(src)
             else:
                 for i, line in enumerate(src.splitlines()):
-                    args.out.write(f"{i + 1}\t{line}\n")
-            if os.path.isfile(args.out.name):
-                os.chmod(args.out.name, 0o644)
+                    print(f"{i + 1}\t{line}")
 
 def handle_list(args): #pylint:disable=unused-argument
     for module,challenges in pwnshop.MODULE_LEVELS.items():
@@ -99,21 +96,7 @@ def handle_build(args, challenges):
             if args.debug_output:
                 challenge._owns_workdir = False
 
-            binary, libs, pdb = challenge.build()
-            args.out.buffer.write(binary)
-            if os.path.isfile(args.out.name):
-                os.chmod(args.out.name, 0o755)
-
-            if args.lpath and libs:
-                os.makedirs(args.lpath, exist_ok=True)
-                for lib_name, lib_bytes in libs:
-                    lib_path = args.lpath + f'/{lib_name}'
-                    with open(lib_path, 'wb+') as f:
-                        f.write(lib_bytes)
-                    os.chmod(lib_path, 0o755)
-            if pdb:
-                with open(f"{args.out.name.replace('.exe', '.pdb')}", 'wb') as f:
-                    f.write(pdb)
+            challenge.build()
 
 def raise_timeout(signum, stack):
     raise TimeoutError("ACTION TIMED OUT")
@@ -299,11 +282,6 @@ def main():
         help="render line numbers",
     )
 
-    command_build.add_argument(
-        "--lpath",
-        help="Location to store needed library files",
-    )
-
     command_apply.add_argument(
         "--no-verify",
         action="store_true",
@@ -383,17 +361,6 @@ def main():
         help="Docker image to use for verification",
         default=os.environ.get("VERIFY_IMAGE", None)
     )
-
-
-    # where to write
-    for c in [ command_render, command_build ]:
-        c.add_argument(
-            "-o",
-            "--out",
-            type=argparse.FileType('w'),
-            default='-',
-            help="change the output destination"
-        )
 
     # common arguments
     for subparser in commands.choices.values():
