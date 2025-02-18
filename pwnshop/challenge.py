@@ -599,12 +599,7 @@ class KernelChallenge(Challenge, register=False):
                 f.write(self.source)
 
             subprocess.run(cmd, stdout=sys.stderr, check=True)
-
-            with open(f"{workdir}/challenge.ko", "rb") as f:
-                self.binary = f.read()
-                with open(self.bin_path, "wb") as o:
-                    o.write(self.binary)
-
+            shutil.copy2(f"{workdir}/challenge.ko", self.bin_path)
             return self.binary, None, None
 
     @contextlib.contextmanager
