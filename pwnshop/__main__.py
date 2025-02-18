@@ -228,21 +228,19 @@ def handle_apply(args):
                 os.chdir(challenge.work_dir)
 
                 if args.no_render and not args.no_build:
-                    print(f"... using existing source at {challenge.src_path}")
-                    challenge.source = open(challenge.src_path).read()
+                    print("... using existing source")
                 else:
-                    print(f"... rendering {challenge.src_path}")
+                    print("... rendering")
                     challenge.render()
 
                 if args.no_build:
-                    print(f"... using existing binary {challenge.bin_path}")
-                    challenge.binary = open(challenge.bin_path, "rb").read()
+                    print("... using existing binary")
                 else:
-                    print(f"... building {challenge.bin_path}")
+                    print("... building")
                     challenge.build()
 
                 if not args.no_verify:
-                    print(f"... verifying {challenge.bin_path}")
+                    print("... verifying")
                     challenge.flaky_verify()
                     print("... verification passed")
 
