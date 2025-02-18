@@ -41,6 +41,8 @@ def layout_text(text):
         lines = [""]
     return "\n".join(f'puts("{line}");' for line in lines)
 
+class BuildError(Exception):
+    pass
 
 @contextfilter
 def layout_text_walkthrough(context, text):
@@ -400,7 +402,9 @@ class Challenge(TemplatedChallenge, register=False):
         build_process.wait()
         if build_process.poll() != 0:
             print(f"BUILD ERROR ({self.env=}):")
-            print(build_process.readall().decode('latin1'))
+            error = build_process.readall().decode('latin1')
+            print(error)
+            raise BuildError(error)
 
         self.libraries = self.pin_libraries() if self.PIN_LIBRARIES else []
         self.binary = self.env.read_file(self.bin_path)
