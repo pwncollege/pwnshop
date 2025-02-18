@@ -90,9 +90,9 @@ class BaseChallenge:
             register_challenge(cls)
 
     @classmethod
-    def duplicate_class(cls, attributes=None, register=False):
+    def duplicate_class(cls, name=None, attributes=None, register=False):
         return type(
-            cls.__name__, (cls,),
+            name or cls.__name__, (cls,),
             dict(attributes) or {},
             register=register
         )
