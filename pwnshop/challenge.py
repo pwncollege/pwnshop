@@ -269,7 +269,12 @@ class PythonChallenge(TemplatedChallenge, register=False):
         os.chmod(self.src_path, 0o4755)
 
     def style(self, src):
-        return black.format_file_contents(src, fast=False, mode=black.FileMode(line_length=120))
+        try:
+            return black.format_file_contents(
+                src, fast=False, mode=black.FileMode(line_length=120)
+            )
+        except black.report.NothingChanged:
+            return src
 
     @contextlib.contextmanager
     def run_challenge(self, argv=(), **kwargs):
