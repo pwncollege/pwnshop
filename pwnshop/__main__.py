@@ -429,6 +429,9 @@ def main():
         finally:
             sys.path.pop()
 
+    if args.workdir:
+        os.makedirs(args.workdir, exist_ok=True)
+
     r = globals()["handle_" + args.ACTION.replace('-', '_')](args)
     if r in (None, True):
         return 0
