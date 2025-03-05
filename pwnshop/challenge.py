@@ -524,11 +524,11 @@ class WindowsChallenge(Challenge, register=False):
         if self.MAKE_DLL:
             cmd.append("/LD")
 
-        return cmd
-        # Linker options
 
+        cmd.append(self.src_path)
+        # Linker options
         #pylint:disable=unreachable
-        cmd.append('/LINK')
+        cmd.append('/link')
         if self.DYNAMIC_BASE is True:
             cmd.append('/DYNAMICBASE')
         else:
@@ -560,7 +560,6 @@ class WindowsChallenge(Challenge, register=False):
                 with open(src_path, 'w') as f:
                     f.write(source)
 
-                cmd.append(src_path)
                 subprocess.check_output(cmd, cwd=workdir)
                 with open(bin_path, 'rb') as f:
                     binary = f.read()

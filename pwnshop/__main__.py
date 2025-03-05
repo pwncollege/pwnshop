@@ -97,7 +97,12 @@ def handle_build(args, challenges):
             if args.debug_output:
                 challenge._owns_workdir = False
 
-            challenge.build()
+            binary, lib, pdb = challenge.build()
+
+            with open(f"{challenge.__class__.__name__}.exe", 'wb') as f:
+                f.write(binary)
+            with open(f"{challenge.__class__.__name__}.pdb", 'wb') as f:
+                f.write(pdb)
 
 def raise_timeout(signum, stack):
     raise TimeoutError("ACTION TIMED OUT")
