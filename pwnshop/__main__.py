@@ -99,10 +99,14 @@ def handle_build(args, challenges):
 
             binary, lib, pdb = challenge.build()
 
-            with open(f"{challenge.__class__.__name__}.exe", 'wb') as f:
-                f.write(binary)
-            with open(f"{challenge.__class__.__name__}.pdb", 'wb') as f:
-                f.write(pdb)
+            def write_file(name, data):
+                if data:
+                    with open(f"{challenge.__class__.__name__}.{name}", 'wb') as f:
+                        f.write(data)
+
+            write_file("exe", binary)
+            write_file("lib", lib)
+            write_file("pdb", pdb)
 
 def raise_timeout(signum, stack):
     raise TimeoutError("ACTION TIMED OUT")
