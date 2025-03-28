@@ -9,7 +9,7 @@ from .env import Environment
 class docker_process(pwnlib.tubes.process.process):
 	def __init__(
 		self, argv=None,
-		container_name=None, user=1000, work_dir=None, suffix="",
+		container_name=None, user=None, work_dir=None, suffix="",
 		shell=False, executable=None, cwd=None, env=None, aslr=None, setuid=None, alarm=None,
 		**kwargs
 	):
@@ -22,8 +22,9 @@ class docker_process(pwnlib.tubes.process.process):
 		work_dir = work_dir or tempfile.mkdtemp()
 		self.container_name = container_name
 
+
 		docker_cmd = [
-			"docker", "exec", "-u", str(user), "-i", "-w", cwd or work_dir, self.container_name, "/bin/bash"
+			"docker", "exec", *(["-u", str(user)] if user is not None else []), "-i", "-w", cwd or work_dir, self.container_name, "/bin/bash"
 		]
 		super().__init__(docker_cmd, **kwargs)
 
@@ -81,6 +82,7 @@ class DockerEnvironment(Environment):
 		self.container = client.containers.run(
 			img + ':' + tag,
 			'sleep 300',
+			user="0",
 			auto_remove=True,
 			detach=True,
 			cap_add=["SYS_PTRACE"],
