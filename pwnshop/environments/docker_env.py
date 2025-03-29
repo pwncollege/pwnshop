@@ -33,8 +33,8 @@ class docker_process(pwnlib.tubes.process.process):
 			kstr = k.decode('latin1') if type(k) is bytes else k
 			with open(f"{work_dir}/.pwnshop-env-var", "wb") as o:
 				o.write(v.encode('latin1') if type(v) is str else v)
-			self.sendline(f"read {kstr} < {work_dir}/.pwnshop-env-var; export {kstr}")
-			self.clean(0.2)
+			self.sendline(f"read {kstr} < {work_dir}/.pwnshop-env-var; export {kstr}; echo")
+			self.readline()
 			os.unlink(f"{work_dir}/.pwnshop-env-var")
 
 		assert not self.clean()
