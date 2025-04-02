@@ -273,6 +273,9 @@ class PythonChallenge(TemplatedChallenge, register=False):
             return black.format_file_contents(
                 src, fast=False, mode=black.FileMode(line_length=120)
             )
+        except black.parsing.InvalidInput:
+            print(src, file=sys.stderr)
+            raise
         except black.report.NothingChanged:
             return src
 
