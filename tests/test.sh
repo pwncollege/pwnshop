@@ -4,11 +4,14 @@ cd "$(dirname "${BASH_SOURCE[0]}")"/..
 
 cd example_module
 EXM=$PWD
+TMP=$(mktemp -d)
+
 pwnshop list | grep ShellExample
 pwnshop render ShellExample
-pwnshop build ShellExample > /tmp/shell_example
-file /tmp/shell_example | grep ELF
-strings <(pwnshop build ShellOptimized) | grep -- "-O3"
+pwnshop -D $TMP build ShellExample
+file $TMP/shellexample | grep ELF
+pwnshop -D $TMP build ShellOptimized
+strings $TMP/shelloptimized | grep -- "-O3"
 pwnshop verify ShellExample
 
 ( pwnshop verify || true ) | tee /tmp/out

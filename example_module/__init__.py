@@ -109,19 +109,21 @@ class ShellcodeChecker(pwnshop.PythonChallenge):
         self.password = self.random_word(8)
 
 class CheckedShellcode(pwnshop.ChallengeGroup):
-    challenges = [ ShellcodeChecker, ShellExample ]
-    challenge_names = [ "checker", "runner" ]
+    challenges = {
+        "checker": ShellcodeChecker,
+        "runner": ShellExample
+    }
 
     def verify(self, **kwargs):
-        with self.challenge_instances[0].run_challenge() as p:
+        with self.checker.run_challenge() as p:
             shellcode = pwnlib.asm.asm(
-                pwnlib.shellcraft.write(1, self.challenge_instances[0].password, len(self.challenge_instances[0].password)) +
+                pwnlib.shellcraft.write(1, self.checker.password, len(self.checker.password)) +
                 pwnlib.shellcraft.exit(0)
             )
             p.send(shellcode)
             assert self.flag in p.readall()
 
-        with self.challenge_instances[0].run_challenge() as p:
+        with self.checker.run_challenge() as p:
             shellcode = pwnlib.asm.asm(
                 pwnlib.shellcraft.write(1, b"asdf", 4) +
                 pwnlib.shellcraft.exit(0)
