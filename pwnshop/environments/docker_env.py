@@ -9,7 +9,7 @@ from .env import Environment
 class docker_process(pwnlib.tubes.process.process):
 	def __init__(
 		self, argv=None,
-		container_name=None, user=None, work_dir=None, suffix="",
+		container_name=None, user=1000, work_dir=None, suffix="",
 		shell=False, executable=None, cwd=None, env=None, aslr=None, setuid=None, alarm=None,
 		**kwargs
 	):
@@ -22,9 +22,8 @@ class docker_process(pwnlib.tubes.process.process):
 		work_dir = work_dir or tempfile.mkdtemp()
 		self.container_name = container_name
 
-
 		docker_cmd = [
-			"docker", "exec", *(["-u", str(user)] if user is not None else []), "-i", "-w", cwd or work_dir, self.container_name, "/bin/bash"
+			"docker", "exec", "-u", str(user), "-i", "-w", cwd or work_dir, self.container_name, "/bin/bash"
 		]
 		super().__init__(docker_cmd, **kwargs)
 
@@ -33,8 +32,8 @@ class docker_process(pwnlib.tubes.process.process):
 			kstr = k.decode('latin1') if type(k) is bytes else k
 			with open(f"{work_dir}/.pwnshop-env-var", "wb") as o:
 				o.write(v.encode('latin1') if type(v) is str else v)
-			self.sendline(f"read {kstr} < {work_dir}/.pwnshop-env-var; export {kstr}; echo")
-			self.readline()
+			self.sendline(f"read {kstr} < {work_dir}/.pwnshop-env-var; export {kstr}")
+			self.clean()
 			os.unlink(f"{work_dir}/.pwnshop-env-var")
 
 		assert not self.clean()
@@ -60,6 +59,9 @@ class docker_process(pwnlib.tubes.process.process):
 	def __exit__(self, *args, **kwargs):
 		super().__exit__(*args, **kwargs)
 		self.kill()
+    
+	def run_shell(self, command, **kwargs):
+		return pwnlib.tubes.process.process(f"docker exec -u root {self.container_name} {command}", shell=True).readall()
 
 class DockerEnvironment(Environment):
 	def __init__(self, image, work_dir=None):
@@ -82,7 +84,6 @@ class DockerEnvironment(Environment):
 		self.container = client.containers.run(
 			img + ':' + tag,
 			'sleep 300',
-			user="0",
 			auto_remove=True,
 			detach=True,
 			cap_add=["SYS_PTRACE"],
