@@ -1,5 +1,12 @@
 # pwnshop
 
+# DEPRECATION NOTICE
+
+This tool was used for building pwn.college challenges in a prior challenge design.
+Challenges, and the code for building them, are moving to [the challenges repository](https://github.com/pwncollege/challenges), along with the needed functionality of pwnshop.
+
+# OLD CONTENT
+
 Pwnshop is a templated challenge generation engine, built on jinja, to generate source code for challenges, compile it, verify it, and all that fun stuff.
 We use pwnshop to generate most of pwn.college's challenges!
 
